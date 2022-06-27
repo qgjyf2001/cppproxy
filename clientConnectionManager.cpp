@@ -1,7 +1,7 @@
 #include "clientConnectionManager.h"
 #include "md5Helper.h"
 
-void clientConnectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
+void clientConnectionManager::doManage(std::string token,safeQueue<int>& sockfds,volatile bool *quitPtr) {
     
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
     sockaddr_in servaddr;
@@ -27,10 +27,16 @@ void clientConnectionManager::doManage(std::string token,safeQueue<int>& sockfds
         throw std::runtime_error("authentication failed");
     }
     std::cout<<"login success"<<std::endl;
+    write(sockfd,"ready\n",6);
     while (true)
     {
         std::string data="done\n";
         read(sockfd,buf,MAXLINE);
+        if (*quitPtr) {
+            data="logout\n";
+            write(sockfd,data.c_str(),data.length());
+            break;
+        }
         write(sockfd,data.c_str(),data.length());
         int fd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
         if(connect(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)

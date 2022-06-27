@@ -91,7 +91,14 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
                     {
                         std::cerr<<"connect error"<<std::endl;;
                         continue;
+                    }
                 }
+                if (sockfd==-1) {
+                    for (auto &[u,v]:proxy2actualMap) {
+                        shutdown(u,SHUT_RDWR);
+                        shutdown(v,SHUT_RDWR);
+                    }//reset
+                    continue;
                 }
                 proxy2actualMap[connfd]=sockfd;
                 actual2proxyMap[sockfd]=connfd;

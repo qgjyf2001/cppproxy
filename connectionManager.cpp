@@ -21,37 +21,48 @@ void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
     int connfd;
     socklen_t clientAddrLen=sizeof(clientaddr);
     while (true) {
-        connfd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
-        if (connfd==-1)
-            if(errno == EINTR)
-                continue;
-            else
-                throw std::runtime_error("accept error");
-        char buf[MAXLINE];
-        std::string rnd=std::to_string(rand());
-        std::cout<<"challlenge:"<<rnd<<std::endl;
-        write(connfd,(rnd+"\n").c_str(),rnd.length());
-        auto n=read(connfd,buf,MAXLINE);
-        std::string buffer(buf,n);
-        std::string result="failed\n";
-        std::string ans=md5Helper::md5(token+rnd);
-        if (buffer.substr(0,ans.length())==ans) {
-            result="success\n";
-            write(connfd,result.c_str(),result.length());
-            break;
+        while (true) {
+            std::cout<<"listening"<<std::endl;
+            connfd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
+            if (connfd==-1)
+                if(errno == EINTR)
+                    continue;
+                else
+                    throw std::runtime_error("accept error");
+            char buf[MAXLINE];
+            std::string rnd=std::to_string(rand());
+            std::cout<<"challlenge:"<<rnd<<std::endl;
+            write(connfd,(rnd+"\n").c_str(),rnd.length());
+            auto n=read(connfd,buf,MAXLINE);
+            std::string buffer(buf,n);
+            std::string result="failed\n";
+            std::string ans=md5Helper::md5(token+rnd);
+            if (buffer.substr(0,ans.length())==ans) {
+                result="success\n";
+                write(connfd,result.c_str(),result.length());
+                break;
+            }
+            close(connfd);
         }
-        close(connfd);
-    }
-    while (true) {
-        std::string data="CONNECT\n";
-        char buffer[MAXLINE];
-        if (sockfds.empty()) {
-            write(connfd,data.c_str(),data.length());
-            read(connfd,buffer,MAXLINE);
-            int fd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
-            sockfds.push(fd);
+        char buf[7];
+        read(connfd,buf,7);
+        while (true) {
+            std::string data="CONNECT\n";
+            char buffer[MAXLINE];
+            if (sockfds.empty()) {
+                write(connfd,data.c_str(),data.length());
+                auto n=read(connfd,buffer,MAXLINE);
+                std::string res(buffer,n);
+                std::string logout="logout";
+                if (res.substr(0,logout.length())==logout) {
+                    std::cout<<"logout"<<std::endl;
+                    sockfds.push(-1);
+                    break;
+                }
+                int fd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
+                sockfds.push(fd);
+            }
         }
     }
-        
     
 }

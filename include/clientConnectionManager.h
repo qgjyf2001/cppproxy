@@ -27,7 +27,7 @@ public:
     clientConnectionManager(std::string ip,int port,int maxClient=65536):port(port),ip(ip),maxClient(maxClient) {
 
     }
-    void doManage(std::string token,safeQueue<int>& sockfds);
+    void doManage(std::string token,safeQueue<int>& sockfds,volatile bool *quitPtr);
 };
 
 #endif
