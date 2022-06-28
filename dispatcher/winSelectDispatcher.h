@@ -12,6 +12,7 @@ class winSelectDispatcher : public dispatcher
 {
 private:
     fd_set clientfd;
+    fd_set* tmpfd;
 public:
     winSelectDispatcher(int maxClient):dispatcher(maxClient) {
         
