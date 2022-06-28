@@ -10,11 +10,12 @@ tcpServer.o:tcpServer.cpp
 threadPool.o:threadPool.cpp
 connectionManager.o:connectionManager.cpp
 clientConnectionManager.o:clientConnectionManager.cpp
+./dispatcher/pollDispatcher.o:./dispatcher/pollDispatcher.cpp
 
 
-server:server.o tcpServer.o threadPool.o connectionManager.o
+server:server.o tcpServer.o threadPool.o connectionManager.o ./dispatcher/pollDispatcher.o
 	$(CC) -o $@ $^ -L. -lpthread -lcrypto -lssl
-client:client.o tcpServer.o threadPool.o clientConnectionManager.o
+client:client.o tcpServer.o threadPool.o clientConnectionManager.o ./dispatcher/pollDispatcher.o
 	$(CC) -o $@ $^ -L. -lpthread -lcrypto -lssl
 
 clean:
