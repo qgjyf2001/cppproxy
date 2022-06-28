@@ -2,12 +2,8 @@ all:server client
 windows:client.exe
 CC=g++
 CXXFLAGS=$(INCLUDE) -std=c++17 -O3 -g
-ifeq ($(LANG),)
-	INCLUDE=-I./include -I"C:/Program Files/OpenSSL-Win64/include"
-else
-	INCLUDE=-I./include
-endif
-
+INCLUDE=-I./include -I"C:/Program Files/OpenSSL-Win64/include"
+INCLUDE=-I./include
 server.o:server.cpp
 client.o:client.cpp
 tcpServer.o:tcpServer.cpp
