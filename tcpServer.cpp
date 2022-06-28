@@ -1,8 +1,10 @@
 #include "tcpServer.h"
-#include "../dispatcher/dispatcher.h"
+#include "dispatcher/dispatcher.h"
 tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 {
+#if !(defined(_WIN32) || defined(_WIN64))
     signal(SIGPIPE , SIG_IGN);
+#endif
     this->proxyPort=proxyPort;
     this->proxyIP=proxyIP;
     this->maxClient=maxClient/2;
@@ -10,7 +12,6 @@ tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,std::string ipAddress)
 {
     threadPool pool(4);
-
     //init
         std::thread proxyThread([&](){
         dispatcher* patcher;
@@ -32,7 +33,11 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
         };
         if (type==SERVER)
         {
+
+#if defined(_WIN32) || defined(_WIN64)
+#else
             patcher=new pollDispatcher(maxClient,true,proxyIP,proxyPort);
+#endif
             auto onConnect=[&](int connfd){
                 std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
                 sockaddr_in servaddr;
@@ -40,8 +45,13 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
                 while (!connections.pop(sockfd));
                 if (sockfd==-1) {
                     for (auto &[u,v]:proxy2actualMap) {
-                        shutdown(u,SHUT_RDWR);
-                        shutdown(v,SHUT_RDWR);
+#if defined(_WIN32) || defined(_WIN64)
+                            shutdown(u,SD_BOTH);
+                            shutdown(v,SD_BOTH);
+#else
+                            shutdown(u,SHUT_RDWR);
+                            shutdown(v,SHUT_RDWR);
+#endif
                     }//reset
                     return 0;
                 }
@@ -53,7 +63,12 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
             };
             patcher->doDispatch(onRead,nullptr,onConnect);
         } else {
+
+#if defined(_WIN32) || defined(_WIN64)
+            patcher=new winSelectDispatcher(1234);
+#else
             patcher=new pollDispatcher(maxClient,false);
+#endif
             auto onDispatch=[&](){
                 if (!connections.empty()) {
                     sockaddr_in servaddr;
@@ -63,10 +78,14 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
                     patcher->insert(connfd);
                     
                     int sockfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
-                    bzero(&servaddr, sizeof(servaddr));
+                    memset(&servaddr,0, sizeof(servaddr));
                     servaddr.sin_family = AF_INET;
                     servaddr.sin_port = htons(port);
+#if defined(_WIN32) || defined(_WIN64)
+                    servaddr.sin_addr.S_un.S_addr = inet_addr(ipAddress.c_str());	
+#else
                     inet_pton(AF_INET, ipAddress.c_str(), &servaddr.sin_addr);
+#endif
                 
                     if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
                     {
@@ -76,8 +95,13 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
                     
                     if (sockfd==-1) {
                         for (auto &[u,v]:proxy2actualMap) {
+#if defined(_WIN32) || defined(_WIN64)
+                            shutdown(u,SD_BOTH);
+                            shutdown(v,SD_BOTH);
+#else
                             shutdown(u,SHUT_RDWR);
                             shutdown(v,SHUT_RDWR);
+#endif
                         }//reset
                         return;
                     }
@@ -94,7 +118,12 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
 
     std::thread netThread([&](){
         dispatcher* patcher;
+
+#if defined(_WIN32) || defined(_WIN64)
+        patcher=new winSelectDispatcher(maxClient);
+#else
         patcher=new pollDispatcher(maxClient,false);
+#endif
         char buf[MAXLINE];
         auto onRead=[&](int index,int sockfd) {
             std::lock_guard<std::mutex> lck(rwLock);

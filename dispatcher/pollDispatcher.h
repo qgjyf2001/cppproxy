@@ -25,7 +25,7 @@ public:
     pollDispatcher(int maxClient,bool isListen=false,std::string ip="",int port=0):dispatcher(maxClient) {
         clientfd=new pollfd[maxClient];
         sockaddr_in servaddr;
-        for (int i=1;i<maxClient;i++)
+        for (int i=0;i<maxClient;i++)
         {
             clientfd[i].fd=-1;//ignored
             clientfd[i].events=0;

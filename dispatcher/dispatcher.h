@@ -18,5 +18,9 @@ public:
     virtual void doDispatch(std::function<int(int,int)> onRead,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr)=0;//index,sockfd
     
 };
+#if defined(_WIN32) || defined(_WIN64)
+#include "winSelectDispatcher.h"
+#else
 #include "pollDispatcher.h"
+#endif
 #endif
