@@ -1,7 +1,7 @@
 #include "tcpServer.h"
 #include "clientConnectionManager.h"
 #include <openssl/md5.h>
-std::string remoteIP="127.0.0.1";
+std::string remoteIP="120.48.61.154";
 int remotePort=8081;
 int remoteProxyPort=8000;
 int main() {
@@ -22,7 +22,7 @@ int main() {
     });
     std::thread proxyThread([&](){
         tcpServer server;
-        server.doProxy(connections,tcpServer::CLIENT,8080,"127.0.0.1");
+        server.doProxy(connections,tcpServer::CLIENT,8080,"192.168.58.100");
     });
     while (true) {
         char buf[256];
