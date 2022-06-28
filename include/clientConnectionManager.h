@@ -3,16 +3,7 @@
 
 #include <iostream>
 #include "safeQueue.h"
-#include <string.h>
-
-#include <unistd.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <errno.h>
-#include <arpa/inet.h>
-#include <signal.h>
-#include <sys/epoll.h>
+#include "../dispatcher/dispatcher.h"
 
 #define MAXLINE 4096
 #define LISTENQ 5

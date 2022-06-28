@@ -1,7 +1,10 @@
 #include "tcpServer.h"
+#include "dispatcher/dispatcher.h"
 tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 {
+#if !(defined(_WIN32) || defined(_WIN64))
     signal(SIGPIPE , SIG_IGN);
+#endif
     this->proxyPort=proxyPort;
     this->proxyIP=proxyIP;
     this->maxClient=maxClient/2;
@@ -9,195 +12,144 @@ tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,std::string ipAddress)
 {
     threadPool pool(4);
-
     //init
         std::thread proxyThread([&](){
-        auto *clientfd=new pollfd[maxClient];
-        for (int i=1;i<maxClient;i++)
-        {
-            clientfd[i].fd=-1;//ignored
-            clientfd[i].events=0;
-        }
-
-        sockaddr_in servaddr,clientaddr;
-        int listenfd;
-        if (type==SERVER) {
-            listenfd=socket(AF_INET,SOCK_STREAM,0);
-            if (listenfd==-1)
-                throw std::runtime_error("socket error");
-            bzero(&servaddr,sizeof(servaddr));
-            servaddr.sin_family=AF_INET;
-            inet_pton(AF_INET,proxyIP.c_str(),&servaddr.sin_addr);
-            servaddr.sin_port=htons(proxyPort);
-            if (bind(listenfd,(sockaddr*)&servaddr,sizeof(servaddr))==-1)
-                throw std::runtime_error("bind error");
-
-            //listen
-            listen(listenfd,LISTENQ);
-
-            clientfd[0].fd=listenfd;
-            clientfd[0].events=POLLIN;
-            clientfd[0].revents=0;
-        }
-        int totfd=0;
-        int cnt=0;
-        while (true)
-        {
-            auto nready=poll(clientfd,totfd+1,10);
-            if (nready==-1)
-                throw std::runtime_error("poll error");
-            if (type==SERVER&&(clientfd[0].revents&POLLIN) ||
-                type==CLIENT && !connections.empty())
+        dispatcher* patcher;
+        char buf[MAXLINE];
+        auto onRead=[&](int index,int sockfd){
+            std::lock_guard<std::mutex> lck(rwLock);
+            auto n=patcher->read(sockfd,buf,MAXLINE);
+            if (n<=0)
             {
+                patcher->remove(index);
+                return 0;
+            }   
+            int actualfd=proxy2actualMap[sockfd];
+            pool.addThread([&](int actualfd,std::string buf){
+                std::lock_guard<std::mutex> lck(mutex);
+                patcher->write(actualfd,buf.c_str(),buf.length());
+            },actualfd,std::string(buf,n));
+            return 0;
+        };
+        if (type==SERVER)
+        {
+
+#if defined(_WIN32) || defined(_WIN64)
+#else
+            patcher=new pollDispatcher(maxClient,true,proxyIP,proxyPort);
+#endif
+            auto onConnect=[&](int connfd){
                 std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
-                socklen_t clientAddrLen=sizeof(clientaddr);
-                int connfd;
-                if (type==SERVER) {
-                    connfd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
-                    if (connfd==-1)
-                        if(errno == EINTR)
-                            continue;
-                        else
-                            throw std::runtime_error("accept error");
-                } else {
-                    while (!connections.pop(connfd));
-                }
-                int i;
-                for (i=1;i<maxClient;i++)
-                    if (clientfd[i].fd<0)
-                    {            
-                        clientfd[i].events=POLLIN;
-                        clientfd[i].fd=connfd;
-                        break;
-                    }
-                if (i==maxClient)//server busy
-                {
-                    close(connfd);
-                    continue;
-                }
-                totfd=std::max(i,totfd);
-                
+                sockaddr_in servaddr;
                 int sockfd;
-                if (type==SERVER)
-                    while (!connections.pop(sockfd));
-                else {
-                    sockfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
-                    bzero(&servaddr, sizeof(servaddr));
-                    servaddr.sin_family = AF_INET;
-                    servaddr.sin_port = htons(port);
-                    inet_pton(AF_INET, ipAddress.c_str(), &servaddr.sin_addr);
-            
-                    if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-                    {
-                        std::cerr<<"connect error"<<std::endl;;
-                        continue;
-                    }
-                }
+                while (!connections.pop(sockfd));
                 if (sockfd==-1) {
                     for (auto &[u,v]:proxy2actualMap) {
-                        shutdown(u,SHUT_RDWR);
-                        shutdown(v,SHUT_RDWR);
+#if defined(_WIN32) || defined(_WIN64)
+                            shutdown(u,SD_BOTH);
+                            shutdown(v,SD_BOTH);
+#else
+                            shutdown(u,SHUT_RDWR);
+                            shutdown(v,SHUT_RDWR);
+#endif
                     }//reset
-                    continue;
+                    return 0;
                 }
                 proxy2actualMap[connfd]=sockfd;
                 actual2proxyMap[sockfd]=connfd;
 
                 actualfds.push(sockfd);
-            }
-            else
-            {
-                char buf[MAXLINE];
-                for (int i=1;i<maxClient;i++)
-                {
-                    if (clientfd[i].fd<0)
-                        continue;
-                    if (clientfd[i].revents&POLLIN)
+                return 0;
+            };
+            patcher->doDispatch(onRead,nullptr,onConnect);
+        } else {
+
+#if defined(_WIN32) || defined(_WIN64)
+            patcher=new winSelectDispatcher(1234);
+#else
+            patcher=new pollDispatcher(maxClient,false);
+#endif
+            auto onDispatch=[&](){
+                if (!connections.empty()) {
+                    sockaddr_in servaddr;
+                    std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
+                    int connfd;
+                    while (!connections.pop(connfd));
+                    patcher->insert(connfd);
+                    
+                    int sockfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
+                    memset(&servaddr,0, sizeof(servaddr));
+                    servaddr.sin_family = AF_INET;
+                    servaddr.sin_port = htons(port);
+#if defined(_WIN32) || defined(_WIN64)
+                    servaddr.sin_addr.S_un.S_addr = inet_addr(ipAddress.c_str());	
+#else
+                    inet_pton(AF_INET, ipAddress.c_str(), &servaddr.sin_addr);
+#endif
+                
+                    if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
                     {
-                        
-                        // std::cout<<"reading...:"<<(type==SERVER?"server":"client")<<std::endl;
-                        std::lock_guard<std::mutex> lck(rwLock);
-                        auto n=read(clientfd[i].fd,buf,MAXLINE);
-                        
-                        // std::cout<<"buffer:"<<std::string(buf,n)<<" "<<(type==SERVER?"server":"client")<<std::endl;
-                        if (n<=0)
-                        {
-                            close(clientfd[i].fd);
-                            clientfd[i].fd=-1;
-                            continue;
-                        }   
-                        int actualfd=proxy2actualMap[clientfd[i].fd];
-                        pool.addThread([this](int actualfd,std::string buf){
-                            std::lock_guard<std::mutex> lck(mutex);
-                            write(actualfd,buf.c_str(),buf.length());
-                        },actualfd,std::string(buf,n));
+                        std::cerr<<"connect error"<<std::endl;;
+                        return;
                     }
+                    
+                    if (sockfd==-1) {
+                        for (auto &[u,v]:proxy2actualMap) {
+#if defined(_WIN32) || defined(_WIN64)
+                            shutdown(u,SD_BOTH);
+                            shutdown(v,SD_BOTH);
+#else
+                            shutdown(u,SHUT_RDWR);
+                            shutdown(v,SHUT_RDWR);
+#endif
+                        }//reset
+                        return;
+                    }
+                    proxy2actualMap[connfd]=sockfd;
+                    actual2proxyMap[sockfd]=connfd;
+
+                    actualfds.push(sockfd);
                 }
-            }
+                return;
+            };
+            patcher->doDispatch(onRead,onDispatch,nullptr);
         }
     });
 
     std::thread netThread([&](){
-        auto *clientfd=new pollfd[maxClient];
-        for (int i=1;i<maxClient;i++)
-        {
-            clientfd[i].fd=-1;//ignored
-            clientfd[i].events=0;
-        }
-        int totfd=0;
-        int cnt=0;
-        while (true)
-        {
-            if (totfd>0)
+        dispatcher* patcher;
+
+#if defined(_WIN32) || defined(_WIN64)
+        patcher=new winSelectDispatcher(maxClient);
+#else
+        patcher=new pollDispatcher(maxClient,false);
+#endif
+        char buf[MAXLINE];
+        auto onRead=[&](int index,int sockfd) {
+            std::lock_guard<std::mutex> lck(rwLock);
+            auto n=patcher->read(sockfd,buf,MAXLINE);
+            if (n<=0)
             {
-                auto nready=poll(clientfd,totfd,10);
-                if (nready==-1)
-                    throw std::runtime_error("poll error");
-            }
+                patcher->remove(index);
+                return 0;
+            }   
+            int proxy=actual2proxyMap[sockfd];
+            pool.addThread([&](int proxy,std::string buf){
+                std::lock_guard<std::mutex> lck(mutex);
+                patcher->write(proxy,buf.c_str(),buf.length());
+            },proxy,std::string(buf,n));
+            return 0;
+        };
+        auto onDispatch=[&](){
             if (!actualfds.empty())
             {
                 int connfd,i;
                 actualfds.pop(connfd);
-                for (i=0;i<maxClient;i++)
-                    if (clientfd[i].fd<0)
-                    {            
-                        clientfd[i].events=POLLIN;
-                        clientfd[i].fd=connfd;
-                        break;
-                    }
-                if (i==maxClient)//server busy
-                {
-                    close(connfd);
-                    continue;
-                }
-                totfd=std::max(i+1,totfd);
+                patcher->insert(connfd);
             }
-            else
-            {
-                char buf[MAXLINE];
-                for (int i=0;i<maxClient;i++)
-                {
-                    if (clientfd[i].fd<0)
-                        continue;
-                    if (clientfd[i].revents&POLLIN)
-                    {
-                        std::lock_guard<std::mutex> lck(rwLock);
-                        auto n=read(clientfd[i].fd,buf,MAXLINE);
-                        if (n<=0)
-                        {
-                            close(clientfd[i].fd);
-                            clientfd[i].fd=-1;
-                            continue;
-                        }   
-                        int proxy=actual2proxyMap[clientfd[i].fd];
-                        pool.addThread([this](int proxy,std::string buf){
-                            std::lock_guard<std::mutex> lck(mutex);
-                            write(proxy,buf.c_str(),buf.length());
-                        },proxy,std::string(buf,n));
-                    }
-                }
-            }
-        }
+            return;
+        };
+        patcher->doDispatch(onRead,onDispatch,nullptr);
     });
     proxyThread.join();
     netThread.join();
