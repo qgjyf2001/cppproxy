@@ -24,7 +24,7 @@ public:
         CLIENT,SERVER
     };
     tcpServer(int proxyPort=0,std::string proxyIP="0.0.0.0",int maxClient=65536);//代理端口
-    void doProxy(safeQueue<int> &connections,serviceType type,int port=0,std::string ipAddress="");//真实端口
+    void doProxy(safeQueue<int> &connections,serviceType type,int *port=nullptr,std::string *ipAddress=nullptr);//真实端口
     ~tcpServer();
 };
 #endif

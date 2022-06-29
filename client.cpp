@@ -20,9 +20,11 @@ int main() {
         clientConnectionManager manager(remoteIP,remotePort);
         manager.doManage("123456",connections,&quit);
     });
+    std::string forwardIP="127.0.0.1";
+    int forwardPort=8080;
     std::thread proxyThread([&](){
         tcpServer server;
-        server.doProxy(connections,tcpServer::CLIENT,8080,"127.0.0.1");
+        server.doProxy(connections,tcpServer::CLIENT,&forwardPort,&forwardIP);
     });
     while (true) {
         char buf[256];

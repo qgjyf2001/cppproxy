@@ -9,7 +9,7 @@ tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
     this->proxyIP=proxyIP;
     this->maxClient=maxClient/2;
 }
-void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,std::string ipAddress)
+void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,std::string* ipAddress)
 {
     threadPool pool(4);
     //init
@@ -80,11 +80,11 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int port,st
                     int sockfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
                     memset(&servaddr,0, sizeof(servaddr));
                     servaddr.sin_family = AF_INET;
-                    servaddr.sin_port = htons(port);
+                    servaddr.sin_port = htons(*port);
 #if defined(_WIN32) || defined(_WIN64)
-                    servaddr.sin_addr.S_un.S_addr = inet_addr(ipAddress.c_str());	
+                    servaddr.sin_addr.S_un.S_addr = inet_addr(ipAddress->c_str());
 #else
-                    inet_pton(AF_INET, ipAddress.c_str(), &servaddr.sin_addr);
+                    inet_pton(AF_INET, ipAddress->c_str(), &servaddr.sin_addr);
 #endif
                 
                     if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
