@@ -29,8 +29,15 @@ private:
     Ui::MainWindow *ui;
     std::string forwardIP;
     int forwardPort;
-    std::thread manageThread,proxyThread;
+    std::thread manageThread,proxyThread,streamThread;
     safeQueue<int> connections;
     bool quit=false;
+    std::stringstream stream;
+signals:
+    void AppendText(const QString &text);
+private slots:
+    void SlotAppendText(const QString &text);
+public:
+    void Append(const QString &text);
 };
 #endif // MAINWINDOW_H

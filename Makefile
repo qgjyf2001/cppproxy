@@ -25,3 +25,6 @@ client.exe:client.o tcpServer.o threadPool.o clientConnectionManager.o ./dispatc
 	$(CC) -o $@ $^ -L. -lpthread -L "C:/Program Files/OpenSSL-Win64/lib/mingw/x86" -lcrypto -lssl -lws2_32
 clean:
 	find . -name '*.o' -type f -print -exec rm -rf {} \;
+	rm client
+	rm server
+	rm client.exe

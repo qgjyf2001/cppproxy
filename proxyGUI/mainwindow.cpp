@@ -5,13 +5,31 @@
 
 #include <sstream>
 #include <QMessageBox>
-
+void MainWindow::SlotAppendText(const QString &text)
+{
+    ui->logText->append(text);
+}
+void MainWindow::Append(const QString &text)
+{
+    emit AppendText(text);
+}
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
+    connect(this,SIGNAL(AppendText(QString)),this,SLOT(SlotAppendText(QString)));
+    std::cout.rdbuf(stream.rdbuf());
+    streamThread=std::thread([this](){
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::string buffer=stream.str();
+            if (buffer.length()>0)
+                this->Append(QString::fromStdString(buffer));
+            stream.str("");
+        }
+        this->Append("exit");
+    });
 #if defined(_WIN32) || defined(_WIN64)
     WSADATA wsaData = {0};
     int nRet = 0;
