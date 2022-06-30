@@ -11,11 +11,27 @@ tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 }
 void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,std::string* ipAddress)
 {
-    threadPool pool(4);
+    std::map<int,std::pair<std::deque<std::string>,int>> proxyWriteBuffer,netWriteBuffer;
     //init
         std::thread proxyThread([&](){
         dispatcher* patcher;
         char buf[MAXLINE];
+        auto onWrite=[&](int sockfd) {
+            std::lock_guard<std::mutex> lck(rwLock);
+            if (proxyWriteBuffer[sockfd].first.empty()) {
+                return 0;
+            }
+            auto& buffer=proxyWriteBuffer[sockfd].first.front();
+            int &offset=proxyWriteBuffer[sockfd].second;
+            auto *data=buffer.data()+offset;
+            int nsize=patcher->write(sockfd,data,buffer.length()-offset);
+            offset+=nsize;
+            if (offset==buffer.length()) {
+                proxyWriteBuffer[sockfd].first.pop_front();
+                offset=0;
+            }
+            return 0;
+        };
         auto onRead=[&](int index,int sockfd){
             std::lock_guard<std::mutex> lck(rwLock);
             auto n=patcher->read(sockfd,buf,MAXLINE);
@@ -25,10 +41,7 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                 return 0;
             }   
             int actualfd=proxy2actualMap[sockfd];
-            pool.addThread([&](int actualfd,std::string buf){
-                std::lock_guard<std::mutex> lck(mutex);
-                patcher->write(actualfd,buf.c_str(),buf.length());
-            },actualfd,std::string(buf,n));
+            netWriteBuffer[actualfd].first.push_back(std::string(buf,n));
             return 0;
         };
         if (type==SERVER)
@@ -42,7 +55,10 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                 std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
                 sockaddr_in servaddr;
                 int sockfd;
-                while (!connections.pop(sockfd));
+                connections.pop(sockfd);//-1
+                while (connections.empty());
+                connections.push(-1);
+                connections.pop(sockfd);
                 if (sockfd==-1) {
                     for (auto &[u,v]:proxy2actualMap) {
 #if defined(_WIN32) || defined(_WIN64)
@@ -61,7 +77,7 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                 actualfds.push(sockfd);
                 return 0;
             };
-            patcher->doDispatch(onRead,nullptr,onConnect);
+            patcher->doDispatch(onRead,onWrite,nullptr,onConnect);
         } else {
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -103,6 +119,8 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                             shutdown(v,SHUT_RDWR);
 #endif
                         }//reset
+                        proxyWriteBuffer.clear();
+                        netWriteBuffer.clear();
                         return;
                     }
                     proxy2actualMap[connfd]=sockfd;
@@ -112,7 +130,7 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                 }
                 return;
             };
-            patcher->doDispatch(onRead,onDispatch,nullptr);
+            patcher->doDispatch(onRead,onWrite,onDispatch,nullptr);
         }
     });
 
@@ -125,6 +143,23 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
         patcher=new pollDispatcher(maxClient,false);
 #endif
         char buf[MAXLINE];
+        
+        auto onWrite=[&](int sockfd) {
+            std::lock_guard<std::mutex> lck(rwLock);
+            if (netWriteBuffer[sockfd].first.empty()) {
+                return 0;
+            }
+            auto& buffer=netWriteBuffer[sockfd].first.front();
+            int &offset=netWriteBuffer[sockfd].second;
+            auto *data=buffer.data()+offset;
+            int nsize=patcher->write(sockfd,data,buffer.length()-offset);
+            offset+=nsize;
+            if (offset==buffer.length()) {
+                netWriteBuffer[sockfd].first.pop_front();
+                offset=0;
+            }
+            return 0;
+        };
         auto onRead=[&](int index,int sockfd) {
             std::lock_guard<std::mutex> lck(rwLock);
             auto n=patcher->read(sockfd,buf,MAXLINE);
@@ -133,11 +168,8 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                 patcher->remove(index);
                 return 0;
             }   
-            int proxy=actual2proxyMap[sockfd];
-            pool.addThread([&](int proxy,std::string buf){
-                std::lock_guard<std::mutex> lck(mutex);
-                patcher->write(proxy,buf.c_str(),buf.length());
-            },proxy,std::string(buf,n));
+            int proxyfd=actual2proxyMap[sockfd];
+            proxyWriteBuffer[proxyfd].first.push_back(std::string(buf,n));
             return 0;
         };
         auto onDispatch=[&](){
@@ -149,7 +181,7 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
             }
             return;
         };
-        patcher->doDispatch(onRead,onDispatch,nullptr);
+        patcher->doDispatch(onRead,onWrite,onDispatch,nullptr);
     });
     proxyThread.join();
     netThread.join();

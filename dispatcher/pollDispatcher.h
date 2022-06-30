@@ -45,7 +45,7 @@ public:
             listen(listenfd,LISTENQ);
 
             clientfd[0].fd=listenfd;
-            clientfd[0].events=POLLIN;
+            clientfd[0].events=POLLIN|POLLOUT;
             clientfd[0].revents=0;
         }
     }
@@ -58,7 +58,7 @@ public:
     int write(int sockfd,const char* buf,int size) override {
         return ::write(sockfd,buf,size);
     }
-    void doDispatch(std::function<int(int,int)> onRead,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr) override;
+    void doDispatch(std::function<int(int,int)> onRead,std::function<int(int)> onWrite,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr) override;
     ~pollDispatcher() {
         delete[] clientfd;
     }

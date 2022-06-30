@@ -45,7 +45,7 @@ MainWindow::~MainWindow()
     if (remoteIP!="") {
               std::cout<<"logout..."<<std::endl;
               quit=true;
-              for (int i=0;i<2;i++) {
+              {
                   int sockfd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
                   sockaddr_in servaddr;
                   memset(&servaddr,0, sizeof(servaddr));
@@ -94,5 +94,6 @@ void MainWindow::on_pushButton_clicked()
     } else {
         forwardIP=ui->forwardIP->text().toStdString();
         forwardPort=ui->forwardPort->text().toInt();
+        std::cout<<"reset forward conection, IP:"<<forwardIP<<",port:"<<forwardPort<<std::endl;
     }
 }

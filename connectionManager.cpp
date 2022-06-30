@@ -29,7 +29,7 @@ void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
                     continue;
                 else
                     throw std::runtime_error("accept error");
-            char buf[MAXLINE];
+            char buf[MAXLINE]={0};
             std::string rnd=std::to_string(rand());
             std::cout<<"challlenge:"<<rnd<<std::endl;
             write(connfd,(rnd+"\n").c_str(),rnd.length());

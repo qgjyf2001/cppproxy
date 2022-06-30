@@ -4,7 +4,7 @@ int pollDispatcher::insert(int fd) {
     for (i=1;i<maxClient;i++)
         if (clientfd[i].fd<0)
         {            
-            clientfd[i].events=POLLIN;
+            clientfd[i].events=POLLIN|POLLOUT;
             clientfd[i].fd=fd;
             break;
         }
@@ -16,7 +16,7 @@ int pollDispatcher::insert(int fd) {
     totfd=std::max(i,totfd);
     return totfd;
 }
-void pollDispatcher::doDispatch(std::function<int(int,int)> onRead,std::function<void()> onDispatch,std::function<int(int)> onConnect) {
+void pollDispatcher::doDispatch(std::function<int(int,int)> onRead,std::function<int(int)> onWrite,std::function<void()> onDispatch,std::function<int(int)> onConnect) {
     while (true)
     {
         auto nready=poll(clientfd,totfd+1,10);
@@ -41,6 +41,10 @@ void pollDispatcher::doDispatch(std::function<int(int,int)> onRead,std::function
                 else if (i!=0) {
                     onRead(i,clientfd[i].fd);
                 }
+            }
+            if (clientfd[i].revents&POLLOUT)
+            {
+                onWrite(clientfd[i].fd);
             }
         }
     }

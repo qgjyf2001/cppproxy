@@ -28,7 +28,7 @@ public:
     int write(int sockfd,const char* buf,int size) override {
         return ::send(sockfd,buf,size,0);
     }
-    void doDispatch(std::function<int(int,int)> onRead,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr) override;
+    void doDispatch(std::function<int(int,int)> onRead,std::function<int(int)> onWrite,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr) override;
     ~winSelectDispatcher() {
     }
 };

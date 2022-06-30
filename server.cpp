@@ -2,6 +2,7 @@
 #include "connectionManager.h"
 int main() {
     safeQueue<int> connections;
+    connections.push(-1);
     std::thread manageThread([&](){
         connectionManager manager(8081);
         manager.doManage("123456",connections);
