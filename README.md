@@ -9,5 +9,5 @@ make
 ## for windows
 
 命令行编译：make windows
-Cancel changes
+
 Qt编译:双击proxyGUI.pro自动构建
