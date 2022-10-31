@@ -6,6 +6,7 @@
 
 #include "safeQueue.h"
 #include <sstream>
+#include "qtstreambuf.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -32,7 +33,7 @@ private:
     std::thread manageThread,proxyThread,streamThread;
     safeQueue<int> connections;
     bool quit=false;
-    std::stringstream stream;
+    std::shared_ptr<qtStreamBuf> buffer;
 signals:
     void AppendText(const QString &text);
 private slots:

@@ -21,13 +21,15 @@ INCLUDEPATH += ./include \
 SOURCES += \
     ./proxyGUI/main.cpp \
     ./proxyGUI/mainwindow.cpp \
+    proxyGUI/qtstreambuf.cpp \
     threadPool.cpp \
     tcpServer.cpp \
     clientConnectionManager.cpp \
     ./dispatcher/winSelectDispatcher.cpp \
 
 HEADERS += \
-    ./proxyGUI/mainwindow.h
+    ./proxyGUI/mainwindow.h \
+    proxyGUI/qtstreambuf.h
     ./dispatcher/dispatcher.h
 
 FORMS += \

@@ -7,7 +7,9 @@
 #include <QMessageBox>
 void MainWindow::SlotAppendText(const QString &text)
 {
-    ui->logText->append(text);
+    static QString textbuf;
+    textbuf+=text;
+    ui->logText->setText(textbuf);
 }
 void MainWindow::Append(const QString &text)
 {
@@ -19,17 +21,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     connect(this,SIGNAL(AppendText(QString)),this,SLOT(SlotAppendText(QString)));
-    std::cout.rdbuf(stream.rdbuf());
-    streamThread=std::thread([this](){
-        while (true) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            std::string buffer=stream.str();
-            if (buffer.length()>0)
-                this->Append(QString::fromStdString(buffer));
-            stream.str("");
-        }
-        this->Append("exit");
-    });
+    buffer=std::make_shared<qtStreamBuf>(this);
+    new (&std::cout) std::ostream(buffer.get());
 #if defined(_WIN32) || defined(_WIN64)
     WSADATA wsaData = {0};
     int nRet = 0;
