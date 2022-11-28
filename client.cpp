@@ -1,7 +1,11 @@
+#ifdef TCPSERVER
 #include "tcpServer.h"
+#else
+#include "udpServer.h"
+#endif
 #include "clientConnectionManager.h"
 #include <openssl/md5.h>
-std::string remoteIP="127.0.0.1";
+std::string remoteIP="121.37.13.134";
 int remotePort=8081;
 int remoteProxyPort=8000;
 int main() {
@@ -20,11 +24,16 @@ int main() {
         clientConnectionManager manager(remoteIP,remotePort);
         manager.doManage("123456",connections,&quit);
     });
-    std::string forwardIP="127.0.0.1";
-    int forwardPort=8080;
+    std::string forwardIP="172.29.224.1";
+    int forwardPort=27015;
     std::thread proxyThread([&](){
+#ifdef TCPSERVER
         tcpServer server;
         server.doProxy(connections,tcpServer::CLIENT,&forwardPort,&forwardIP);
+#else
+        udpServer server;
+        server.doProxy(connections,udpServer::CLIENT,&forwardPort,&forwardIP);
+#endif
     });
     while (true) {
         char buf[256];

@@ -2,6 +2,7 @@
 #define POLLDISPATCHER_H
 #include "dispatcher.h"
 #include <string.h>
+#include <iostream>
 
 #include <unistd.h>
 #include <poll.h>

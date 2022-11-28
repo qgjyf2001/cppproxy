@@ -1,7 +1,10 @@
 #include "connectionManager.h"
 #include "md5Helper.h"
+#include "../dispatcher/dispatcher.h"
 
 void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
+    auto *patcher=new pollDispatcher(0,false);
+
     srand(time(NULL));
 //init
     sockaddr_in servaddr,clientaddr;
@@ -32,14 +35,14 @@ void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
             char buf[MAXLINE]={0};
             std::string rnd=std::to_string(rand());
             std::cout<<"challlenge:"<<rnd<<std::endl;
-            write(connfd,(rnd+"\n").c_str(),rnd.length());
+            patcher->fullWrite(connfd,(rnd+"\n").c_str(),rnd.length());
             auto n=read(connfd,buf,MAXLINE);
             std::string buffer(buf,n);
             std::string result="failed\n";
             std::string ans=md5Helper::md5(token+rnd);
             if (buffer.substr(0,ans.length())==ans) {
                 result="success\n";
-                write(connfd,result.c_str(),result.length());
+                patcher->fullWrite(connfd,result.c_str(),result.length());
                 break;
             }
             close(connfd);
@@ -50,7 +53,7 @@ void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
             std::string data="CONNECT\n";
             char buffer[MAXLINE];
             if (sockfds.empty()) {
-                write(connfd,data.c_str(),data.length());
+                patcher->fullWrite(connfd,data.c_str(),data.length());
                 auto n=read(connfd,buffer,MAXLINE);
                 std::string res(buffer,n);
                 std::string logout="logout";
