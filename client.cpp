@@ -18,13 +18,13 @@ int main() {
         return -1;
     }
 #endif
-    safeQueue<int> connections;
+    safeQueue<std::promise<int>> connections;
     bool quit=false;
     std::thread manageThread([&](){
         clientConnectionManager manager(remoteIP,remotePort);
         manager.doManage("123456",connections,&quit);
     });
-    std::string forwardIP="172.29.224.1";
+    std::string forwardIP="172.19.208.1";
     int forwardPort=27015;
     std::thread proxyThread([&](){
 #ifdef TCPSERVER
@@ -43,6 +43,7 @@ int main() {
         if (command.substr(0,_quit.length())==_quit) {
             std::cout<<"logout..."<<std::endl;
             quit=true;
+#ifdef TCPSERVER
             {
                 int sockfd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
                 sockaddr_in servaddr;
@@ -65,6 +66,20 @@ int main() {
                 close(sockfd);
 #endif
             }
+#else
+            int sockfd=socket(PF_INET, SOCK_DGRAM, 0);//向真实端口发起连接
+            sockaddr_in servaddr;
+            memset(&servaddr,0, sizeof(servaddr));
+            servaddr.sin_family = AF_INET;
+            servaddr.sin_port = htons(remoteProxyPort);
+            inet_pton(AF_INET, remoteIP.c_str(), &servaddr.sin_addr);
+            if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+            {
+                std::cerr<<"connect error"<<std::endl;
+            }
+            write(sockfd,"\n",1);
+            close(sockfd);
+#endif
             manageThread.join();
             std::cout<<"done"<<std::endl;
             break;

@@ -2,7 +2,7 @@
 #include "md5Helper.h"
 #include "../dispatcher/dispatcher.h"
 
-void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
+void connectionManager::doManage(std::string token,safeQueue<std::promise<int>>& sockfds) {
     auto *patcher=new pollDispatcher(0,false);
 
     srand(time(NULL));
@@ -52,18 +52,20 @@ void connectionManager::doManage(std::string token,safeQueue<int>& sockfds) {
         while (true) {
             std::string data="CONNECT\n";
             char buffer[MAXLINE];
-            if (sockfds.empty()) {
+            std::promise<int> promise;
+            {
+                sockfds.sync_pop(promise);
                 patcher->fullWrite(connfd,data.c_str(),data.length());
                 auto n=read(connfd,buffer,MAXLINE);
                 std::string res(buffer,n);
                 std::string logout="logout";
                 if (res.substr(0,logout.length())==logout) {
                     std::cout<<"logout"<<std::endl;
-                    sockfds.push(-1);
+                    promise.set_value(-1);
                     break;
                 }
                 int fd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
-                sockfds.push(fd);
+                promise.set_value(fd);
             }
         }
     }

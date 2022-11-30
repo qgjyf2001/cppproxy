@@ -2,7 +2,7 @@
 #include "md5Helper.h"
 #include "../dispatcher/dispatcher.h"
 
-void clientConnectionManager::doManage(std::string token,safeQueue<int>& sockfds,volatile bool *quitPtr) {
+void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<int>>& sockfds,volatile bool *quitPtr) {
     dispatcher* patcher;
 #if defined(_WIN32) || defined(_WIN64)
     patcher=new winSelectDispatcher(0);
@@ -55,7 +55,9 @@ void clientConnectionManager::doManage(std::string token,safeQueue<int>& sockfds
             std::cerr<<"connect error at:"<<__FILE__<<",line"<<__LINE__<<std::endl;;
             continue;
         }
-        sockfds.push(fd);
+        std::promise<int> promise;
+        promise.set_value(fd);
+        sockfds.push(std::move(promise));
         std::cout<<"new connection"<<std::endl;
     }
 }
