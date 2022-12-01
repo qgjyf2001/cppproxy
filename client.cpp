@@ -24,8 +24,8 @@ int main() {
         clientConnectionManager manager(remoteIP,remotePort);
         manager.doManage("123456",connections,&quit);
     });
-    std::string forwardIP="172.19.208.1";
-    int forwardPort=27015;
+    std::string forwardIP="127.0.0.1";
+    int forwardPort=22;
     std::thread proxyThread([&](){
 #ifdef TCPSERVER
         tcpServer server;

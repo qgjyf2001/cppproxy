@@ -9,7 +9,7 @@ tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
     this->proxyIP=proxyIP;
     this->maxClient=maxClient/2;
 }
-void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,std::string* ipAddress)
+void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType type,int* port,std::string* ipAddress)
 {
     std::map<int,std::pair<std::deque<std::string>,int>> proxyWriteBuffer,netWriteBuffer;
     //init
@@ -54,11 +54,10 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
             auto onConnect=[&](int connfd){
                 std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
                 sockaddr_in servaddr;
-                int sockfd;
-                connections.pop(sockfd);//-1
-                while (connections.empty());
-                connections.push(-1);
-                connections.pop(sockfd);
+                std::promise<int> promise;
+                auto sockfd_=promise.get_future();
+                connections.push(std::move(promise));
+                int sockfd=sockfd_.get();
                 if (sockfd==-1) {
                     for (auto &[u,v]:proxy2actualMap) {
 #if defined(_WIN32) || defined(_WIN64)
@@ -89,8 +88,9 @@ void tcpServer::doProxy(safeQueue<int>& connections,serviceType type,int* port,s
                 if (!connections.empty()) {
                     sockaddr_in servaddr;
                     std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
-                    int connfd;
-                    while (!connections.pop(connfd));
+                    std::promise<int> connfd_;
+                    connections.pop(connfd_);
+                    int connfd=connfd_.get_future().get();
                     patcher->insert(connfd);
                     
                     int sockfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
