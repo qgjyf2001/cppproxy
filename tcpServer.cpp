@@ -1,5 +1,6 @@
 #include "tcpServer.h"
 #include "dispatcher/dispatcher.h"
+#include "hook/filter.h"
 tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 {
 #if !(defined(_WIN32) || defined(_WIN64))
@@ -88,12 +89,11 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
                 if (!connections.empty()) {
                     sockaddr_in servaddr;
                     std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
-                    std::promise<int> connfd_;
-                    connections.pop(connfd_);
-                    int connfd=connfd_.get_future().get();
-                    patcher->insert(connfd);
+                    std::promise<int> sockfd_;
+                    connections.pop(sockfd_);
+                    int sockfd=sockfd_.get_future().get();
                     
-                    int sockfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
+                    int connfd=socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
                     memset(&servaddr,0, sizeof(servaddr));
                     servaddr.sin_family = AF_INET;
                     servaddr.sin_port = htons(*port);
@@ -103,13 +103,13 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
                     inet_pton(AF_INET, ipAddress->c_str(), &servaddr.sin_addr);
 #endif
                 
-                    if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+                    if(connect(connfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
                     {
                         std::cerr<<"connect error"<<std::endl;;
                         return;
                     }
                     
-                    if (sockfd==-1) {
+                    if (connfd==-1) {
                         for (auto &[u,v]:proxy2actualMap) {
 #if defined(_WIN32) || defined(_WIN64)
                             shutdown(u,SD_BOTH);
@@ -127,6 +127,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
                     actual2proxyMap[sockfd]=connfd;
 
                     actualfds.push(sockfd);
+                    patcher->insert(connfd);
                 }
                 return;
             };
@@ -141,6 +142,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
         patcher=new winSelectDispatcher(maxClient);
 #else
         patcher=new pollDispatcher(maxClient,false);
+        //patcher=new filter<pollDispatcher>({"myFilter1"},maxClient,false);
 #endif
         char buf[MAXLINE];
         
@@ -163,7 +165,10 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
         auto onRead=[&](int index,int sockfd) {
             std::lock_guard<std::mutex> lck(rwLock);
             auto n=patcher->read(sockfd,buf,MAXLINE);
-            if (n<=0)
+            if (n==0) {
+                return 0;
+            }
+            if (n<0)
             {
                 patcher->remove(index);
                 return 0;

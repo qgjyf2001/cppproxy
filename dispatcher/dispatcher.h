@@ -10,12 +10,16 @@ public:
     dispatcher(int maxClient):maxClient(maxClient) {
 
     }
-    void fullWrite(int sockfd,const char* buf,int size) {
+    bool fullWrite(int sockfd,const char* buf,int size) {
         int wrote=0;
         while (wrote<size) {
             int wrote_=write(sockfd,buf+wrote,size-wrote);
+            if (wrote_<0) {
+                return false;
+            }
             wrote+=wrote_;
         }
+        return true;
     }
     virtual int connect()=0;
     virtual int insert(int fd)=0;

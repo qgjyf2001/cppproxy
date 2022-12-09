@@ -1,15 +1,27 @@
 #include "clientConnectionManager.h"
 #include "md5Helper.h"
 #include "../dispatcher/dispatcher.h"
+#include <netinet/tcp.h>
 
 void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<int>>& sockfds,volatile bool *quitPtr) {
+    reconnect:
     dispatcher* patcher;
 #if defined(_WIN32) || defined(_WIN64)
     patcher=new winSelectDispatcher(0);
 #else
     patcher=new pollDispatcher(0,false);
 #endif
+
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
+    int keepIdle = 6;     /*开始首次KeepAlive探测前的TCP空闭时间 */
+    int keepInterval = 5; /* 两次KeepAlive探测间的时间间隔  */
+    int keepCount = 3;    /* 判定断开前的KeepAlive探测次数 */
+    int keepalive = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive , sizeof(keepalive ));
+    setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle));
+    setsockopt(sockfd, SOL_TCP,TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval));
+    setsockopt(sockfd,SOL_TCP, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount)); 
+
     sockaddr_in servaddr;
     memset(&servaddr,0,sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -42,13 +54,24 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
     while (true)
     {
         std::string data="done\n";
-        patcher->read(sockfd,buf,MAXLINE);
+        bool status;
+        int n=patcher->read(sockfd,buf,MAXLINE);
+        if (n<0) {
+            std::cout<<"read failed with error code "<<n<<std::endl;
+            goto brokenPipe;
+        }
         if (*quitPtr) {
             data="logout\n";
             patcher->fullWrite(sockfd,data.c_str(),data.length());
             break;
         }
-        patcher->fullWrite(sockfd,data.c_str(),data.length());
+        status=patcher->fullWrite(sockfd,data.c_str(),data.length());
+        if (!status) {
+            std::cout<<"write failed"<<std::endl;
+            brokenPipe:
+            close(sockfd);
+            goto reconnect;
+        }
         int fd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
         if(connect(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
         {

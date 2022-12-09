@@ -5,7 +5,7 @@
 #endif
 #include "clientConnectionManager.h"
 #include <openssl/md5.h>
-std::string remoteIP="121.37.13.134";
+std::string remoteIP="127.0.0.1";
 int remotePort=8081;
 int remoteProxyPort=8000;
 int main() {
@@ -24,8 +24,8 @@ int main() {
         clientConnectionManager manager(remoteIP,remotePort);
         manager.doManage("123456",connections,&quit);
     });
-    std::string forwardIP="127.0.0.1";
-    int forwardPort=22;
+    std::string forwardIP="172.18.128.1";
+    int forwardPort=80;
     std::thread proxyThread([&](){
 #ifdef TCPSERVER
         tcpServer server;

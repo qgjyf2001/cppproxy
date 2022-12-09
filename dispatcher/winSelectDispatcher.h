@@ -22,10 +22,10 @@ public:
     }
     int insert(int fd) override;
     int remove(int index) override;
-    int read(int sockfd,char* buf,int size) override {
+    virtual int read(int sockfd,char* buf,int size) override {
         return ::recv(sockfd,buf,size,0);
     }
-    int write(int sockfd,const char* buf,int size) override {
+    virtual int write(int sockfd,const char* buf,int size) override {
         return ::send(sockfd,buf,size,0);
     }
     void doDispatch(std::function<int(int,int)> onRead,std::function<int(int)> onWrite,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr) override;

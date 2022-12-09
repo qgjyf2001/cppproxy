@@ -53,10 +53,10 @@ public:
     int connect() override;
     int insert(int fd) override;
     int remove(int index) override;
-    int read(int sockfd,char* buf,int size) override {
+    virtual int read(int sockfd,char* buf,int size) override {
         return ::read(sockfd,buf,size);
     }
-    int write(int sockfd,const char* buf,int size) override {
+    virtual int write(int sockfd,const char* buf,int size) override {
         return ::write(sockfd,buf,size);
     }
     void doDispatch(std::function<int(int,int)> onRead,std::function<int(int)> onWrite,std::function<void()> onDispatch=nullptr,std::function<int(int)> onConnect=nullptr) override;
