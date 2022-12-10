@@ -12,30 +12,25 @@ ifeq ($(Type),UDP)
 	serverType=UDPSERVER
 endif
 CXXFLAGS=$(INCLUDE) -std=c++17 -O3 -g -D$(serverType)
-server.o:server.cpp
-client.o:client.cpp
-tcpServer.o:tcpServer.cpp
-udpServer.o:udpServer.cpp
-threadPool.o:threadPool.cpp
 
-connectionManager.o:connectionManager.cpp
-clientConnectionManager.o:clientConnectionManager.cpp
 
-./dispatcher/pollDispatcher.o:./dispatcher/pollDispatcher.cpp
-./dispatcher/winSelectDispatcher.o:./dispatcher/winSelectDispatcher.cpp
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-./hook/http/httpRequestFilter.o:./hook/http/httpRequestFilter.cpp
-./hook/http/httpRequestParser.o:./hook/http/httpRequestParser.cpp
-./hook/myFilter1.o:./hook/myFilter1.cpp
+linux_core = tcpServer.o udpServer.o threadPool.o ./dispatcher/pollDispatcher.o connectionManager.o clientConnectionManager.o
+windows_core = tcpServer.o threadPool.o ./dispatcher/winSelectDispatcher.o clientConnectionManager.o
 
-#./hook/http/httpHook.a:./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o
-#	$(AR) cq $@ $^
+http_filter = ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o
+https_filter = ./hook/https/httpsClientFilter.o ./hook/https/httpsProxyFilter.o ./hook/https/SSLManager.o
+filter_core = $(http_filter) $(https_filter)
 
-server:server.o tcpServer.o udpServer.o threadPool.o connectionManager.o ./dispatcher/pollDispatcher.o ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o ./hook/myFilter1.o
+udf_filter = ./hook/myFilter1.o
+
+server:server.o $(linux_core) $(filter_core) $(udf_filter)
 	$(CC) -o $@ $^ -L. -lpthread -lcrypto -lssl
-client:client.o tcpServer.o udpServer.o threadPool.o clientConnectionManager.o ./dispatcher/pollDispatcher.o ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o
+client:client.o $(linux_core)
 	$(CC) -o $@ $^ -L. -lpthread -lcrypto -lssl
-client.exe:client.o tcpServer.o threadPool.o clientConnectionManager.o ./dispatcher/winSelectDispatcher.o
+client.exe:client.o $(windows_core)
 	$(CC) -o $@ $^ -L. -lpthread -L "C:/Program Files/OpenSSL-Win64/lib/mingw/x86" -lcrypto -lssl -lws2_32
 clean:
 	find . -name '*.o' -type f -print -exec rm -rf {} \;
