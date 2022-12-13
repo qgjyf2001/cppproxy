@@ -1,7 +1,7 @@
 #include "tcpServer.h"
 #include "dispatcher/dispatcher.h"
 #include "hook/filter.h"
-std::map<int,int> tcpServer::proxy2actualMap;
+std::map<int,int> tcpServer::actual2proxyMap;
 tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 {
 #if !(defined(_WIN32) || defined(_WIN64))
@@ -177,6 +177,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
             }   
             int proxyfd=actual2proxyMap[sockfd];
             proxyWriteBuffer[proxyfd].first.push_back(std::string(buf,n));
+            
             return 0;
         };
         auto onDispatch=[&](){

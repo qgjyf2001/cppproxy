@@ -16,10 +16,10 @@ private:
     std::string proxyIP;
     int maxClient;
     std::mutex mutex,rwLock;
-    std::map<int,int> actual2proxyMap;//真实fd到代理fd的映射
+    std::map<int,int> proxy2actualMap;//真实fd到代理fd的映射
     safeQueue<int> actualfds;
 public:
-    static std::map<int,int> proxy2actualMap;//真实fd到代理fd的映射
+    static std::map<int,int> actual2proxyMap;//真实fd到代理fd的映射
     enum serviceType {
         CLIENT,SERVER
     };

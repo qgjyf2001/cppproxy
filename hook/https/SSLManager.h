@@ -10,6 +10,9 @@ struct SSLClient {
   SSLClient(SSL* ssl,BIO* rio,BIO* wio):ssl(ssl),rio(rio),wio(wio) {
 
   }
+  ~SSLClient() {
+    SSL_free(ssl);
+  }
 };
 
 class SSLManager {
@@ -22,6 +25,8 @@ private:
       return s;
     }
     static SSL_CTX* serverCtx;
+    static SSL_CTX* clientCtx;
     std::shared_ptr<SSLClient> server,client;
+    std::string buffer;
 };
 #endif

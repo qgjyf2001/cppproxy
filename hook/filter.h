@@ -61,10 +61,18 @@ public:
             cache.erase(sockfd);
         }
         for (auto filter_:filters) {
-            content=filter_->filter(sockfd,content,needFilter);
+            try {
+                content=filter_->filter(sockfd,content,needFilter);
+                if (!needFilter) {
+                break;
+                }
+            } catch (...) {
+                cache.erase(sockfd);
+                return size;
+            }
         }
         if (!needFilter) {
-            return size;
+            return size; // filtered
         }
         int len=content.length()-offset;
         int n=T::write(sockfd,content.data()+offset,std::min(MAXLINE,len));

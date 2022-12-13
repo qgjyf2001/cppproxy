@@ -52,7 +52,7 @@ public:
     }
     int connect() override;
     int insert(int fd) override;
-    int remove(int index) override;
+    virtual int remove(int index) override;
     virtual int read(int sockfd,char* buf,int size) override {
         return ::read(sockfd,buf,size);
     }
