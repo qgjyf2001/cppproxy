@@ -29,12 +29,17 @@ protected:
 };
 template <typename T>
 typename filterRegistry<T>::registry filterRegistry<T>::clazz_;
+enum filterReason {
+    NONE,
+    NOTUSED,
+    REUSED
+};
 class baseFilter {
 public:
     virtual void reset(int sockfd) {
 
     }
-    virtual std::string filter(int sockfd,std::string content,bool &needFilter) {
+    virtual std::string filter(int sockfd,std::string content,filterReason &reason) {
         return std::move(content);
     }
 };
@@ -54,28 +59,32 @@ public:
     virtual int write(int sockfd,const char* buf,int size) {
         std::string content(buf,size);
         int offset=0;
-        bool needFilter=true;
+        filterReason reason=filterReason::NONE;
         if (cache.find(sockfd)!=cache.end()) {
             content=std::move(cache[sockfd].first);
             offset=cache[sockfd].second;
             cache.erase(sockfd);
-        }
-        for (auto filter_:filters) {
-            try {
-                content=filter_->filter(sockfd,content,needFilter);
-                if (!needFilter) {
-                break;
+        } else {
+            for (auto filter_:filters) {
+                try {
+                    content=filter_->filter(sockfd,content,reason);
+                    if (reason!=filterReason::NONE) {
+                    break;
+                    }
+                } catch (std::exception& e) {
+                    cache.erase(sockfd);
+                    return size;
                 }
-            } catch (...) {
-                cache.erase(sockfd);
-                return size;
             }
-        }
-        if (!needFilter) {
-            return size; // filtered
         }
         int len=content.length()-offset;
         int n=T::write(sockfd,content.data()+offset,std::min(MAXLINE,len));
+        if (reason==filterReason::NOTUSED) {
+            return size;
+        }
+        if (reason==filterReason::REUSED) {
+            return 0;
+        }
         if (n==-1) {
             for (auto filter_:filters) {
                 filter_->reset(sockfd);

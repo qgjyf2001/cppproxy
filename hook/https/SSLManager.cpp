@@ -42,13 +42,27 @@ SSLManager::SSLManager() {
     SSL_accept(server->ssl);
     SSL_connect(client->ssl);
 }
-std::string SSLManager::writeProxy(std::string content,std::function<std::string(std::string)> filter) {
+std::string SSLManager::writeProxy(std::string content,filterReason &reason,std::function<std::string(std::string)> filter) {
     char buf[MAXLINE];
     int n;
+    if (SSL_is_init_finished(server->ssl) && !SSL_is_init_finished(client->ssl)) {    
+        n=BIO_read(client->wio, buf, MAXLINE);
+        //std::cout<<"SSL client not finished"<<n<<std::endl;
+        reason=filterReason::REUSED;
+        if (n>0) {
+            return std::string(buf,n);
+        } else {
+            return "";
+        }
+    }
     BIO_write(server->rio, content.data(), content.length());
     n = SSL_read(server->ssl, buf, MAXLINE);
-    if (n>0) {        
-        std::string filtered=filter(std::string(buf,n));
+    if (n>0) {
+        std::string buffer=std::string(buf,n);
+        while ((n=SSL_read(server->ssl, buf, MAXLINE))>0) {
+            buffer+=std::string(buf,n);
+        }
+        std::string filtered=filter(buffer);
         SSL_write(client->ssl,filtered.data(),filtered.length());
     }
     if (!SSL_is_init_finished(server->ssl)) { 
@@ -61,22 +75,34 @@ std::string SSLManager::writeProxy(std::string content,std::function<std::string
     if (n<=0) {
         return "";
     }
-    return std::string(buf,n);
+    std::string result=std::string(buf,n);
+    while ((n=BIO_read(client->wio, buf, MAXLINE))>0) {
+        result+=std::string(buf,n);
+    }
+    return result;
 }
-std::string SSLManager::writeClient(std::string content,std::function<std::string(std::string)> filter) {
+std::string SSLManager::writeClient(std::string content,filterReason &reason,std::function<std::string(std::string)> filter) {
     int n;
     char buf[MAXLINE];
     BIO_write(client->rio, content.data(), content.length());
     n=SSL_read(client->ssl, buf, MAXLINE);
     if (n>0) {
-        std::string filtered=filter(std::string(buf,n));
+        std::string buffer=std::string(buf,n);
+        while ((n=SSL_read(client->ssl, buf, MAXLINE))>0) {
+            buffer+=std::string(buf,n);
+        }
+        std::string filtered=filter(buffer);
         SSL_write(server->ssl,filtered.data(),filtered.length());
     }
     n=BIO_read(server->wio, buf, MAXLINE);
     if (n<=0) {
         return "";
     }
-    return std::string(buf,n);
+    std::string result=std::string(buf,n);
+    while ((n=BIO_read(server->wio, buf, MAXLINE))>0) {
+        result+=std::string(buf,n);
+    }
+    return result;
 }
 SSL_CTX* SSLManager::serverCtx=nullptr;
 SSL_CTX* SSLManager::clientCtx=nullptr;

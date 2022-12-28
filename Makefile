@@ -24,7 +24,7 @@ http_filter = ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o
 https_filter = ./hook/https/httpsClientFilter.o ./hook/https/httpsProxyFilter.o ./hook/https/SSLManager.o
 filter_core = $(http_filter) $(https_filter)
 
-udf_filter = ./hook/myFilter1.o
+udf_filter = ./hook/myFilter1.o ./hook/myFilter2.o
 
 server:server.o $(linux_core) $(filter_core) $(udf_filter)
 	$(CC) -o $@ $^ -L. -lpthread -lcrypto -lssl

@@ -1,5 +1,5 @@
 #include "httpRequestFilter.h"
-std::string httpRequestFilter::filter(int sockfd,std::string content,bool& needFilter) {
+std::string httpRequestFilter::filter(int sockfd,std::string content,filterReason& reason) {
     httpRequestParser parser;
     if (map.find(sockfd)!=map.end()) {
         parser=std::move(map[sockfd]);
@@ -21,7 +21,7 @@ std::string httpRequestFilter::filter(int sockfd,std::string content,bool& needF
     auto &headers=parser.headers;
     if (headers.find("Content-Length")!=headers.end() && std::atoi(headers["Content-Length"].data()+1)!=textLength) {
         map[sockfd]=std::move(parser);
-        needFilter=false;
+        reason=filterReason::NOTUSED;
         return "";
     } 
     doFilter(parser);

@@ -10,6 +10,6 @@ public:
     __attribute((used)) httpsClientFilter() {
         
     }
-    __attribute((used)) virtual std::string filter(int sockfd,std::string content,bool& needFilter);
+    __attribute((used)) virtual std::string filter(int sockfd,std::string content,filterReason& reason);
 };
 #endif

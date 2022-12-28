@@ -18,8 +18,8 @@ struct SSLClient {
 class SSLManager {
 public:
     SSLManager();
-    std::string writeClient(std::string content,std::function<std::string(std::string)> filter=SSLManager::nonFilter);
-    std::string writeProxy(std::string content,std::function<std::string(std::string)> filter=SSLManager::nonFilter);
+    std::string writeClient(std::string content,filterReason &reason,std::function<std::string(std::string)> filter=SSLManager::nonFilter);
+    std::string writeProxy(std::string content,filterReason &reason,std::function<std::string(std::string)> filter=SSLManager::nonFilter);
 private:
     static std::string nonFilter(std::string s) {
       return s;
@@ -27,6 +27,5 @@ private:
     static SSL_CTX* serverCtx;
     static SSL_CTX* clientCtx;
     std::shared_ptr<SSLClient> server,client;
-    std::string buffer;
 };
 #endif

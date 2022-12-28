@@ -25,7 +25,7 @@ public:
     __attribute((used)) virtual void reset(int sockfd) {
         map.erase(sockfd);
     }
-    __attribute((used)) virtual std::string filter(int sockfd,std::string content,bool& needFilter);
+    __attribute((used)) virtual std::string filter(int sockfd,std::string content,filterReason& reason);
 protected:
     virtual void doFilter(httpRequestParser& request) {
 
