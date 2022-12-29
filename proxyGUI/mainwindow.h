@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <thread>
+#include <future>
 
 #include "safeQueue.h"
 #include <sstream>
@@ -31,7 +32,7 @@ private:
     std::string forwardIP;
     int forwardPort;
     std::thread manageThread,proxyThread,streamThread;
-    safeQueue<int> connections;
+    safeQueue<std::promise<int>> connections;
     bool quit=false;
     std::shared_ptr<qtStreamBuf> buffer;
 signals:

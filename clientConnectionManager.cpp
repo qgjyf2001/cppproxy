@@ -1,7 +1,11 @@
 #include "clientConnectionManager.h"
 #include "md5Helper.h"
 #include "../dispatcher/dispatcher.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#else
 #include <netinet/tcp.h>
+#endif
 
 void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<int>>& sockfds,volatile bool *quitPtr) {
     reconnect:
@@ -13,6 +17,9 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
 #endif
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接
+
+#if defined(_WIN32) || defined(_WIN64)
+#else
     int keepIdle = 6;     /*开始首次KeepAlive探测前的TCP空闭时间 */
     int keepInterval = 5; /* 两次KeepAlive探测间的时间间隔  */
     int keepCount = 3;    /* 判定断开前的KeepAlive探测次数 */
@@ -21,6 +28,7 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
     setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle));
     setsockopt(sockfd, SOL_TCP,TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval));
     setsockopt(sockfd,SOL_TCP, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount)); 
+#endif
 
     sockaddr_in servaddr;
     memset(&servaddr,0,sizeof(servaddr));
@@ -69,7 +77,11 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
         if (!status) {
             std::cout<<"write failed"<<std::endl;
             brokenPipe:
-            close(sockfd);
+#if defined(_WIN32) || defined(_WIN64)
+                closesocket(sockfd);
+#else
+                close(sockfd);
+#endif
             goto reconnect;
         }
         int fd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接

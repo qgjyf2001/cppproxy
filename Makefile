@@ -20,11 +20,11 @@ CXXFLAGS=$(INCLUDE) -std=c++17 -O3 -g -D$(serverType)
 linux_core = tcpServer.o udpServer.o threadPool.o ./dispatcher/pollDispatcher.o connectionManager.o clientConnectionManager.o
 windows_core = tcpServer.o threadPool.o ./dispatcher/winSelectDispatcher.o clientConnectionManager.o
 
-http_filter = ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o
+http_filter = ./hook/http/json/jsonParser.cpp ./hook/http/utils/stringUtils.o ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o ./hook/http/httpResponseFilter.o ./hook/http/httpResponseParser.o 
 https_filter = ./hook/https/httpsClientFilter.o ./hook/https/httpsProxyFilter.o ./hook/https/SSLManager.o
 filter_core = $(http_filter) $(https_filter)
 
-udf_filter = ./hook/myFilter1.o ./hook/myFilter2.o
+udf_filter = ./hook/myFilter1.o ./hook/myFilter2.o ./hook/httpsRequestCapture.o ./hook/httpsResponseCapture.o
 
 server:server.o $(linux_core) $(filter_core) $(udf_filter)
 	$(CC) -o $@ $^ -L. -lpthread -lcrypto -lssl

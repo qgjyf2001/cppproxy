@@ -1,11 +1,11 @@
 #ifndef HTTPSCLIENTFILTER_H
 #define HTTPSCLIENTFILTER_H
-#include "../http/httpRequestFilter.h"
+#include "../http/httpResponseFilter.h"
 #include "SSLManager.h"
 
 extern std::unordered_map<int,std::shared_ptr<SSLManager>> managerMap; 
 
-class httpsClientFilter : public httpRequestFilter,public filterRegistry<httpsClientFilter> {
+class httpsClientFilter : public httpResponseFilter,public filterRegistry<httpsClientFilter> {
 public:
     __attribute((used)) httpsClientFilter() {
         

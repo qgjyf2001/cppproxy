@@ -52,7 +52,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
 #if defined(_WIN32) || defined(_WIN64)
 #else
             //patcher=new pollDispatcher(maxClient,true,proxyIP,proxyPort);
-            patcher=new filter<pollDispatcher>({"httpsClientFilter"},maxClient,true,proxyIP,proxyPort);
+            patcher=new filter<pollDispatcher>({"httpsResponseCapture"},maxClient,true,proxyIP,proxyPort);
 #endif
             auto onConnect=[&](int connfd){
                 std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
@@ -144,7 +144,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
         patcher=new winSelectDispatcher(maxClient);
 #else
         //patcher=new pollDispatcher(maxClient,false);
-        patcher=new filter<pollDispatcher>({"myFilter2"},maxClient,false);
+        patcher=new filter<pollDispatcher>({"httpsRequestCapture"},maxClient,false);
 #endif
         char buf[MAXLINE];
         
