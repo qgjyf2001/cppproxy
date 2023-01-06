@@ -4,7 +4,8 @@
 #include <netinet/tcp.h>
 
 void connectionManager::doManage(std::string token,safeQueue<std::promise<int>>& sockfds) {
-    auto *patcher=new pollDispatcher(0,false);
+    auto *patcher=new pollDispatcher();
+    patcher->init(0,false);
 
     srand(time(NULL));
 //init

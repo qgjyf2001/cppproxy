@@ -1,6 +1,5 @@
 #include "tcpServer.h"
 #include "dispatcher/dispatcher.h"
-#include "hook/filter.h"
 std::map<int,int> tcpServer::actual2proxyMap;
 tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 {
@@ -16,7 +15,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
     std::map<int,std::pair<std::deque<std::string>,int>> proxyWriteBuffer,netWriteBuffer;
     //init
         std::thread proxyThread([&](){
-        dispatcher* patcher;
+        std::shared_ptr<dispatcher> patcher;
         char buf[MAXLINE];
         auto onWrite=[&](int sockfd) {
             std::lock_guard<std::mutex> lck(rwLock);
@@ -46,14 +45,12 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
             netWriteBuffer[actualfd].first.push_back(std::string(buf,n));
             return 0;
         };
+        
+        auto clientConfig=config::instance().json["clientDispatcher"];
+        patcher=dispatcher::get(clientConfig);
+        
         if (type==SERVER)
         {
-
-#if defined(_WIN32) || defined(_WIN64)
-#else
-            //patcher=new pollDispatcher(maxClient,true,proxyIP,proxyPort);
-            patcher=new filter<pollDispatcher>({"httpsResponseCapture"},maxClient,true,proxyIP,proxyPort);
-#endif
             auto onConnect=[&](int connfd){
                 std::cout<<"new connections:"<<(type==SERVER?"server":"client")<<std::endl;
                 sockaddr_in servaddr;
@@ -81,12 +78,6 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
             };
             patcher->doDispatch(onRead,onWrite,nullptr,onConnect);
         } else {
-
-#if defined(_WIN32) || defined(_WIN64)
-            patcher=new winSelectDispatcher(1234);
-#else
-            patcher=new pollDispatcher(maxClient,false);
-#endif
             auto onDispatch=[&](){
                 if (!connections.empty()) {
                     sockaddr_in servaddr;
@@ -138,14 +129,10 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
     });
 
     std::thread netThread([&](){
-        dispatcher* patcher;
+        std::shared_ptr<dispatcher> patcher;
 
-#if defined(_WIN32) || defined(_WIN64)
-        patcher=new winSelectDispatcher(maxClient);
-#else
-        //patcher=new pollDispatcher(maxClient,false);
-        patcher=new filter<pollDispatcher>({"httpsRequestCapture"},maxClient,false);
-#endif
+        auto proxyConfig=config::instance().json["proxyDispatcher"];
+        patcher=dispatcher::get(proxyConfig);
         char buf[MAXLINE];
         
         auto onWrite=[&](int sockfd) {

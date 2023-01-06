@@ -8,14 +8,14 @@
 #define MAXLINE 4096
 #define LISTENQ 5
 
-class winSelectDispatcher : public dispatcher
+class winSelectDispatcher : public dispatcher , public dispatcherRegistry<winSelectDispatcher>
 {
 private:
     fd_set clientfd;
     fd_set* tmpfd;
 public:
-    winSelectDispatcher(int maxClient):dispatcher(maxClient) {
-        
+    void init(int maxClient) {
+        dispatcher::init(maxClient);
     }
     int connect() override {//not supported
         return 0;

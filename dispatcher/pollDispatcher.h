@@ -16,14 +16,15 @@
 #define MAXLINE 4096
 #define LISTENQ 5
 
-class pollDispatcher : public dispatcher
+class pollDispatcher : public dispatcher , public dispatcherRegistry<pollDispatcher>
 {
 private:
     pollfd* clientfd;
     int totfd=0;
     int listenfd=-1;
 public:
-    pollDispatcher(int maxClient,bool isListen=false,std::string ip="",int port=0):dispatcher(maxClient) {
+    void init(int maxClient,bool isListen=false,std::string ip="",int port=0) {
+        dispatcher::init(maxClient);
         clientfd=new pollfd[maxClient];
         sockaddr_in servaddr;
         for (int i=0;i<maxClient;i++)

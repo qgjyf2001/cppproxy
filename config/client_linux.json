@@ -1,0 +1,26 @@
+{
+    "password": "123456",
+    "proxyDispatcher": {
+        "name": "pollDispatcher",
+        "params": {
+            "arg1": 32768,
+            "arg2": 0,
+            "arg3": "",
+            "arg4": 0
+        }
+    },
+    "clientDispatcher": {
+        "name": "pollDispatcher",
+        "params": {
+            "arg1": 32768,
+            "arg2": 0,
+            "arg3": "",
+            "arg4": 0
+        }
+    },
+    "remoteIP": "127.0.0.1",
+    "remotePort": 8081,
+    "remoteProxyPort": 8000,
+    "forwardIP": "127.0.0.1",
+    "forwardPort": 443
+}

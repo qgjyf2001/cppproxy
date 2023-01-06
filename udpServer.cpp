@@ -32,7 +32,9 @@ void udpServer::doProxy(safeQueue<std::promise<int>>& connections,serviceType ty
     std::map<int,std::pair<std::deque<std::string>,int>> proxyWriteBuffer,netWriteBuffer;
     //init
         std::thread proxyThread([&](){
-        dispatcher* patcher = new pollDispatcher(maxClient);
+        auto patcher_=new pollDispatcher();
+        patcher_->init(maxClient);
+        dispatcher* patcher = patcher_;
         int listenfd=bindNewAddr();
         patcher->insert(listenfd);
         char buf[MAXLINE];
@@ -164,7 +166,9 @@ void udpServer::doProxy(safeQueue<std::promise<int>>& connections,serviceType ty
 #if defined(_WIN32) || defined(_WIN64)
         patcher=new winSelectDispatcher(maxClient);
 #else
-        patcher=new pollDispatcher(maxClient,false);
+        auto patcher_=new pollDispatcher();
+        patcher_->init(maxClient,false);
+        patcher=patcher_;
 #endif
         char buf[MAXLINE];
         

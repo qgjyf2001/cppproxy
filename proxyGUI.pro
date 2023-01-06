@@ -18,6 +18,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 INCLUDEPATH += ./include \
                 "C:/Program Files/OpenSSL-Win64/include"
 
+DEFINES+=QT_NO_FOREACH
+
 SOURCES += \
     ./proxyGUI/main.cpp \
     ./proxyGUI/mainwindow.cpp \
@@ -26,6 +28,7 @@ SOURCES += \
     tcpServer.cpp \
     clientConnectionManager.cpp \
     ./dispatcher/winSelectDispatcher.cpp \
+    ./json/JsonParser.cpp \
 
 HEADERS += \
     ./proxyGUI/mainwindow.h \
@@ -35,7 +38,7 @@ HEADERS += \
 FORMS += \
     ./proxyGUI/mainwindow.ui
 
-LIBS +=  -L "C:/Program Files/OpenSSL-Win64/lib/mingw/x86" -lcrypto -lssl -lws2_32
+LIBS +=  -L "C:/Program Files/OpenSSL-Win64/lib/mingw/x64" -lcrypto -lssl -lws2_32
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

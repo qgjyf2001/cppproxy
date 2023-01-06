@@ -11,9 +11,13 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
     reconnect:
     dispatcher* patcher;
 #if defined(_WIN32) || defined(_WIN64)
-    patcher=new winSelectDispatcher(0);
+    auto patcher_=new winSelectDispatcher();
+    patcher_->init(0);
+    patcher=patcher_;
 #else
-    patcher=new pollDispatcher(0,false);
+    auto patcher_=new pollDispatcher();
+    patcher_->init(0,false);
+    patcher=patcher_;
 #endif
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);//向真实端口发起连接

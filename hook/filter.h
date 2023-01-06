@@ -1,34 +1,10 @@
 #ifndef FILTER_H
 #define FILTER_H
 #include "../dispatcher/dispatcher.h"
-#include <cxxabi.h>
+#include "registry.h"
 #include <unordered_map>
 #include <memory>
 
-class baseFilter;
-inline std::unordered_map<std::string,std::shared_ptr<baseFilter>> filterMap;
-template <typename T>
-class filterRegistry {
-public:
-    filterRegistry() {
-        static_assert(std::is_base_of<baseFilter,T>::value,"typename should be base of baseFilter");
-    }
-protected:
-    class registry {
-    public:
-        registry() {
-            char buffer[256]={0};
-            const char *mangled=typeid(T).name();
-            size_t length=256;
-            abi::__cxa_demangle(mangled,buffer,&length,nullptr);
-            std::string demangled=buffer;
-            filterMap[demangled]=std::make_shared<T>();
-        }
-    };
-    __attribute((used)) static registry clazz_;
-};
-template <typename T>
-typename filterRegistry<T>::registry filterRegistry<T>::clazz_;
 enum filterReason {
     NONE,
     NOTUSED,
@@ -44,16 +20,19 @@ public:
     }
 };
 template <typename T>
+using filterRegistry=registry<baseFilter,T>;
+template <typename T,typename ...Args>
 class filter : public T {
 public:
-    template <typename... Args>
-    filter(std::vector<std::string> filters,Args... args):T(std::forward<Args>(args)...) {
+    void init(std::vector<std::string> filters,Args... args) {
+        T::init(std::forward<Args>(args)...);
         for (auto filter_:filters) {
-            if (filterMap.find(filter_)==filterMap.end()) {
+            auto filter_ptr=dynamicLoader<baseFilter>::instance().get(filter_);
+            if (filter_ptr==nullptr) {
                 std::cerr<<"filter "<<filter_<<" not registered!"<<std::endl;
                 continue;
             }
-            this->filters.push_back(filterMap[filter_]);
+            this->filters.push_back(filter_ptr);
         }
     }
     virtual int write(int sockfd,const char* buf,int size) {
@@ -104,4 +83,29 @@ private:
     std::vector<std::shared_ptr<baseFilter>> filters;
     std::unordered_map<int,std::pair<std::string,int>> cache;
 };
+
+namespace typeHelper {
+    template <typename U,typename V>
+    struct bindFilterWithArgs_ {
+
+    };
+    template <typename T,typename... Args>
+    struct bindFilterWithArgs_<T,std::function<void(Args...)>> {
+        using type=filter<T,Args...>;
+    };
+    template <typename T>
+    struct bindFilterWithArgs {
+        using type=typename bindFilterWithArgs<decltype(&T::init)>::type;
+    };
+    template <typename T,typename F>
+    struct bindFilterWithArgs<F T::*> {
+        using type=typename bindFilterWithArgs_<T,std::function<F>>::type;
+    };
+};
+template <typename T>
+class filter<T> : public typeHelper::bindFilterWithArgs<T>::type,public dispatcherRegistry<filter<T>>
+{
+};
+
+template class filter<pollDispatcher>;
 #endif

@@ -89,7 +89,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>121.37.13.134</string>
+     <string>172.28.168.228</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="remoteProxyPort">
@@ -128,7 +128,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>127.0.0.1</string>
+     <string>172.28.168.228</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="forwardPort">
@@ -141,7 +141,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>22</string>
+     <string>443</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton">

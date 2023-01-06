@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "tcpServer.h"
 #include "clientConnectionManager.h"
+#include "config.h"
 
 #include <sstream>
 #include <QMessageBox>
@@ -30,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         QMessageBox::information(nullptr,"错误","网络库初始化失败");
     }
+    config::instance().init("../cppproxy/config/client_windows.json");
 #endif
 }
 

@@ -4,11 +4,16 @@
 #include "udpServer.h"
 #endif
 #include "clientConnectionManager.h"
-#include <openssl/md5.h>
-std::string remoteIP="127.0.0.1";
-int remotePort=8081;
-int remoteProxyPort=8000;
+#include "config.h"
 int main() {
+#if defined(_WIN32) || defined(_WIN64)
+    config::instance().init("./config/client_windows.json");
+#else
+    config::instance().init("./config/client_linux.json");
+#endif
+    std::string remoteIP=config::instance().json["remoteIP"].toString();
+    int remotePort=config::instance().json["remotePort"].toInt();
+    int remoteProxyPort=config::instance().json["remoteProxyPort"].toInt();
 #if defined(_WIN32) || defined(_WIN64)
     WSADATA wsaData = {0};
     int nRet = 0;
@@ -22,10 +27,10 @@ int main() {
     bool quit=false;
     std::thread manageThread([&](){
         clientConnectionManager manager(remoteIP,remotePort);
-        manager.doManage("123456",connections,&quit);
+        manager.doManage(config::instance().json["password"].toString(),connections,&quit);
     });
-    std::string forwardIP="127.0.0.1";
-    int forwardPort=443;
+    std::string forwardIP=config::instance().json["forwardIP"].toString();;
+    int forwardPort=config::instance().json["forwardPort"].toInt();;
     std::thread proxyThread([&](){
 #ifdef TCPSERVER
         tcpServer server;

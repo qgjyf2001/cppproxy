@@ -3,9 +3,9 @@ windows:client.exe
 CC=g++
 Type=TCP
 ifeq ($(LANG),)
-	INCLUDE=-I./include -I"C:/Program Files/OpenSSL-Win64/include"
+	INCLUDE=-I. -I./include -I"C:/Program Files/OpenSSL-Win64/include"
 else
-	INCLUDE=-I./include
+	INCLUDE=-I./ -I./include
 endif
 serverType=TCPSERVER
 ifeq ($(Type),UDP)
@@ -17,10 +17,10 @@ CXXFLAGS=$(INCLUDE) -std=c++17 -O3 -g -D$(serverType)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-linux_core = tcpServer.o udpServer.o threadPool.o ./dispatcher/pollDispatcher.o connectionManager.o clientConnectionManager.o
-windows_core = tcpServer.o threadPool.o ./dispatcher/winSelectDispatcher.o clientConnectionManager.o
+linux_core = ./json/jsonParser.o tcpServer.o udpServer.o threadPool.o ./dispatcher/pollDispatcher.o connectionManager.o clientConnectionManager.o
+windows_core =./json/jsonParser.o tcpServer.o threadPool.o ./dispatcher/winSelectDispatcher.o clientConnectionManager.o
 
-http_filter = ./hook/http/json/jsonParser.cpp ./hook/http/utils/stringUtils.o ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o ./hook/http/httpResponseFilter.o ./hook/http/httpResponseParser.o 
+http_filter = ./hook/http/utils/stringUtils.o ./hook/http/httpRequestFilter.o ./hook/http/httpRequestParser.o ./hook/http/httpResponseFilter.o ./hook/http/httpResponseParser.o 
 https_filter = ./hook/https/httpsClientFilter.o ./hook/https/httpsProxyFilter.o ./hook/https/SSLManager.o
 filter_core = $(http_filter) $(https_filter)
 
