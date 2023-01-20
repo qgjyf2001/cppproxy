@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>960</width>
-    <height>400</height>
+    <width>973</width>
+    <height>556</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>proxyGUI</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QLabel" name="label">
@@ -89,7 +89,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>172.28.168.228</string>
+     <string/>
     </property>
    </widget>
    <widget class="QLineEdit" name="remoteProxyPort">
@@ -102,7 +102,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>8000</string>
+     <string/>
     </property>
    </widget>
    <widget class="QLineEdit" name="remotePort">
@@ -115,7 +115,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>8081</string>
+     <string/>
     </property>
    </widget>
    <widget class="QLineEdit" name="forwardIP">
@@ -128,7 +128,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>172.28.168.228</string>
+     <string/>
     </property>
    </widget>
    <widget class="QLineEdit" name="forwardPort">
@@ -141,14 +141,14 @@
      </rect>
     </property>
     <property name="text">
-     <string>443</string>
+     <string/>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton">
     <property name="geometry">
      <rect>
-      <x>250</x>
-      <y>270</y>
+      <x>260</x>
+      <y>430</y>
       <width>151</width>
       <height>61</height>
      </rect>
@@ -167,7 +167,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>123456</string>
+     <string/>
     </property>
    </widget>
    <widget class="QLabel" name="label_6">
@@ -188,8 +188,8 @@
      <rect>
       <x>640</x>
       <y>50</y>
-      <width>281</width>
-      <height>291</height>
+      <width>301</width>
+      <height>451</height>
      </rect>
     </property>
    </widget>
@@ -206,18 +206,128 @@
      <string>日志：</string>
     </property>
    </widget>
+   <widget class="QLabel" name="label_8">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>250</y>
+      <width>68</width>
+      <height>15</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>代理类:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_9">
+    <property name="geometry">
+     <rect>
+      <x>340</x>
+      <y>250</y>
+      <width>68</width>
+      <height>15</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>转发类:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_10">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>300</y>
+      <width>101</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>代理类配置:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_11">
+    <property name="geometry">
+     <rect>
+      <x>340</x>
+      <y>300</y>
+      <width>91</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>转发类配置:</string>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="proxyConfig">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>290</y>
+      <width>161</width>
+      <height>121</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="clientConfig">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>290</y>
+      <width>171</width>
+      <height>121</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="proxyClass">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>250</y>
+      <width>121</width>
+      <height>22</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="clientClass">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>250</y>
+      <width>111</width>
+      <height>22</height>
+     </rect>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>960</width>
+     <width>973</width>
      <height>26</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuproxyGUI">
+    <property name="title">
+     <string>proxyGUI</string>
+    </property>
+    <addaction name="loadConfig"/>
+    <addaction name="saveConfig"/>
+   </widget>
+   <addaction name="menuproxyGUI"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="loadConfig">
+   <property name="text">
+    <string>加载配置</string>
+   </property>
+  </action>
+  <action name="saveConfig">
+   <property name="text">
+    <string>导出配置</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

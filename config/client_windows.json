@@ -18,9 +18,9 @@
             "arg4": 0
         }
     },
-    "remoteIP": "172.22.208.139",
+    "remoteIP": "192.168.0.106",
     "remotePort": 8081,
     "remoteProxyPort": 8000,
-    "forwardIP": "172.22.208.139",
-    "forwardPort": 443
+    "forwardIP": "127.0.0.1",
+    "forwardPort": 8080
 }

@@ -23,7 +23,7 @@ public:
         }
         return registryMap[key]();
     }
-private:
+public:
     std::unordered_map<std::string,std::function<std::shared_ptr<T>(void)>> registryMap;
 };
 

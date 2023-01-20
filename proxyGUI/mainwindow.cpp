@@ -2,10 +2,10 @@
 #include "ui_mainwindow.h"
 #include "tcpServer.h"
 #include "clientConnectionManager.h"
-#include "config.h"
 
 #include <sstream>
 #include <QMessageBox>
+#include <QFileDialog>
 void MainWindow::SlotAppendText(const QString &text)
 {
     static QString textbuf;
@@ -16,6 +16,41 @@ void MainWindow::Append(const QString &text)
 {
     emit AppendText(text);
 }
+void MainWindow::loadConfig(std::string file) {
+    std::ifstream fin;
+    fin.open(file, std::ios::in);
+    std::stringstream buf;
+    buf << fin.rdbuf();
+    std::string content=buf.str();
+    JsonParser json(&content);
+    ui->password->setText(QString::fromStdString(json["password"].toString()));
+    ui->remoteIP->setText(QString::fromStdString(json["remoteIP"].toString()));
+    ui->remotePort->setText(QString::number(json["remotePort"].toInt()));
+    ui->remoteProxyPort->setText(QString::number(json["remoteProxyPort"].toInt()));
+    ui->forwardIP->setText(QString::fromStdString(json["forwardIP"].toString()));
+    ui->forwardPort->setText(QString::number(json["forwardPort"].toInt()));
+    ui->proxyConfig->setPlainText(QString::fromStdString(json["proxyDispatcher"]["params"]));
+    ui->clientConfig->setPlainText(QString::fromStdString(json["clientDispatcher"]["params"]));
+    ui->proxyClass->setCurrentText(QString::fromStdString(json["proxyDispatcher"]["name"]));
+    ui->clientClass->setCurrentText(QString::fromStdString(json["clientDispatcher"]["name"]));
+}
+JsonParser MainWindow::dumpConfig() {
+    JsonParser json;
+    json["password"]=ui->password->text().toStdString();
+    json["remoteIP"]=ui->remoteIP->text().toStdString();
+    json["remotePort"]=ui->remotePort->text().toInt();
+    json["remoteProxyPort"]=ui->remoteProxyPort->text().toInt();
+    json["forwardIP"]=ui->forwardIP->text().toStdString();
+    json["forwardPort"]=ui->forwardPort->text().toInt();
+    json["proxyDispatcher"]["name"]=ui->proxyClass->currentText().toStdString();
+    json["clientDispatcher"]["name"]=ui->clientClass->currentText().toStdString();
+    std::string proxyConfig=ui->proxyConfig->toPlainText().toStdString();
+    json["proxyDispatcher"]["params"]=JsonParser(&proxyConfig);
+    std::string clientConfig=ui->clientConfig->toPlainText().toStdString();
+    json["clientDispatcher"]["params"]=JsonParser(&clientConfig);
+    return json;
+
+}
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -24,6 +59,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this,SIGNAL(AppendText(QString)),this,SLOT(SlotAppendText(QString)));
     buffer=std::make_shared<qtStreamBuf>(this);
     new (&std::cout) std::ostream(buffer.get());
+
+    QStringList classList;
+    for (auto [key,_]:dynamicLoader<dispatcher>::instance().registryMap) {
+        classList.append(QString::fromStdString(key));
+    }
+    ui->proxyClass->addItems(classList);
+    ui->clientClass->addItems(classList);
 #if defined(_WIN32) || defined(_WIN64)
     WSADATA wsaData = {0};
     int nRet = 0;
@@ -31,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         QMessageBox::information(nullptr,"错误","网络库初始化失败");
     }
-    config::instance().init("../cppproxy/config/client_windows.json");
+    loadConfig("../cppproxy/config/client_windows.json");
 #endif
 }
 
@@ -71,7 +113,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pushButton_clicked()
 {
-    if (remoteIP=="") {
+    {
+        config::instance().json=std::move(dumpConfig());
         remoteIP=ui->remoteIP->text().toStdString();
         remotePort=ui->remotePort->text().toInt();
         remoteProxyPort=ui->remoteProxyPort->text().toInt();
@@ -85,10 +128,20 @@ void MainWindow::on_pushButton_clicked()
                 clientConnectionManager manager(remoteIP,remotePort);
                 manager.doManage(password,connections,&quit);
             },ui->password->text().toStdString());
-        ui->pushButton->setText("修改代理");
-    } else {
-        forwardIP=ui->forwardIP->text().toStdString();
-        forwardPort=ui->forwardPort->text().toInt();
-        std::cout<<"reset forward conection, IP:"<<forwardIP<<",port:"<<forwardPort<<std::endl;
+       // ui->pushButton->setText("修改代理");
     }
+}
+
+void MainWindow::on_loadConfig_triggered()
+{
+    QString fileName=QFileDialog::getOpenFileName(this,"加载配置",".","Json File(*.json)");
+    loadConfig(fileName.toStdString());
+}
+
+void MainWindow::on_saveConfig_triggered()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,"保存配置",".","Json File(*.json)");
+    std::ofstream fout(fileName.toStdString());
+    fout<<dumpConfig();
+    fout.close();
 }

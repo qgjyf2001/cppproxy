@@ -8,6 +8,7 @@
 #include "safeQueue.h"
 #include <sstream>
 #include "qtstreambuf.h"
+#include "config.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -35,10 +36,16 @@ private:
     safeQueue<std::promise<int>> connections;
     bool quit=false;
     std::shared_ptr<qtStreamBuf> buffer;
+    void loadConfig(std::string file);
+    JsonParser dumpConfig();
 signals:
     void AppendText(const QString &text);
 private slots:
     void SlotAppendText(const QString &text);
+    void on_loadConfig_triggered();
+
+    void on_saveConfig_triggered();
+
 public:
     void Append(const QString &text);
 };
