@@ -1,22 +1,19 @@
 {
     "password": "123456",
     "proxyDispatcher": {
-        "name": "filter<pollDispatcher>",
+        "name": "pollDispatcher",
         "params": {
-            "arg1": [
-                "myFilter2"
-            ],
-            "arg2": 32768,
-            "arg3": 0,
-            "arg4": "",
-            "arg5": 0
+            "arg1": 32768,
+            "arg2": 0,
+            "arg3": "",
+            "arg4": 0
         }
     },
     "clientDispatcher": {
         "name": "filter<pollDispatcher>",
         "params": {
             "arg1": [
-                "httpsResponseCapture"
+                "libmyfilter.so"
             ],
             "arg2": 32768,
             "arg3": 1,

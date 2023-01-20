@@ -82,6 +82,7 @@
         "regex": "cpp",
         "iomanip": "cpp",
         "shared_mutex": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "codecvt": "cpp"
     }
 }

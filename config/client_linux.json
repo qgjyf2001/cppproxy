@@ -22,5 +22,5 @@
     "remotePort": 8081,
     "remoteProxyPort": 8000,
     "forwardIP": "127.0.0.1",
-    "forwardPort": 443
+    "forwardPort": 3000
 }
