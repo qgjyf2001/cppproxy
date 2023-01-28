@@ -10,15 +10,12 @@
         }
     },
     "clientDispatcher": {
-        "name": "filter<pollDispatcher>",
+        "name": "pollDispatcher",
         "params": {
-            "arg1": [
-                "libmyfilter.so"
-            ],
-            "arg2": 32768,
-            "arg3": 1,
-            "arg4": "0.0.0.0",
-            "arg5": 8000
+            "arg1": 32768,
+            "arg2": 1,
+            "arg3": "0.0.0.0",
+            "arg4": 8000
         }
     },
     "remotePort": 8081,

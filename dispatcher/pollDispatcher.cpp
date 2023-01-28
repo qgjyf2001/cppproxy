@@ -6,6 +6,7 @@ int pollDispatcher::insert(int fd) {
         {            
             clientfd[i].events=POLLIN|POLLOUT;
             clientfd[i].fd=fd;
+            sockMap[fd]=i;
             break;
         }
     if (i==maxClient)//server busy
@@ -61,7 +62,8 @@ int pollDispatcher::connect() {
     insert(connfd);
     return connfd;
 }
-int pollDispatcher::remove(int index) {
+int pollDispatcher::remove(int sockfd) {
+    int index=sockMap[sockfd];
     close(clientfd[index].fd);
     clientfd[index].fd=-1;
     return 0;

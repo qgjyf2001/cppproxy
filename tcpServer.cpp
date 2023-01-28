@@ -13,9 +13,10 @@ tcpServer::tcpServer(int proxyPort,std::string proxyIP,int maxClient)
 void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType type,int* port,std::string* ipAddress)
 {
     std::map<int,std::pair<std::deque<std::string>,int>> proxyWriteBuffer,netWriteBuffer;
+    std::set<int> proxyRemovedFd,netRemovedFd;
     //init
+    std::shared_ptr<dispatcher> proxyPatcher,netPatcher;
         std::thread proxyThread([&](){
-        std::shared_ptr<dispatcher> patcher;
         char buf[MAXLINE];
         auto onWrite=[&](int sockfd) {
             std::lock_guard<std::mutex> lck(rwLock);
@@ -25,29 +26,38 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
             auto& buffer=proxyWriteBuffer[sockfd].first.front();
             int &offset=proxyWriteBuffer[sockfd].second;
             auto *data=buffer.data()+offset;
-            int nsize=patcher->write(sockfd,data,buffer.length()-offset);
+            int nsize=proxyPatcher->write(sockfd,data,buffer.length()-offset);
             offset+=nsize;
             if (offset==buffer.length()) {
                 proxyWriteBuffer[sockfd].first.pop_front();
                 offset=0;
+                if (proxyRemovedFd.find(sockfd)!=proxyRemovedFd.end()&& proxyWriteBuffer[sockfd].first.empty()) {
+                    proxyPatcher->remove(sockfd);
+                    proxyRemovedFd.erase(sockfd);
+                }
             }
             return 0;
         };
         auto onRead=[&](int index,int sockfd){
             std::lock_guard<std::mutex> lck(rwLock);
-            auto n=patcher->read(sockfd,buf,MAXLINE);
+            auto n=proxyPatcher->read(sockfd,buf,MAXLINE);
+            int actualfd=proxy2actualMap[sockfd];
             if (n<=0)
             {
-                patcher->remove(index);
+                proxyPatcher->remove(sockfd);
+                if (netWriteBuffer[actualfd].first.empty()) {
+                    netPatcher->remove(actualfd);
+                } else {
+                    netRemovedFd.insert(actualfd);
+                }
                 return 0;
             }   
-            int actualfd=proxy2actualMap[sockfd];
             netWriteBuffer[actualfd].first.push_back(std::string(buf,n));
             return 0;
         };
         
         auto clientConfig=config::instance().json["clientDispatcher"];
-        patcher=dispatcher::get(clientConfig);
+        proxyPatcher=dispatcher::get(clientConfig);
         
         if (type==SERVER)
         {
@@ -76,7 +86,7 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
                 actualfds.push(sockfd);
                 return 0;
             };
-            patcher->doDispatch(onRead,onWrite,nullptr,onConnect);
+            proxyPatcher->doDispatch(onRead,onWrite,nullptr,onConnect);
         } else {
             auto onDispatch=[&](){
                 if (!connections.empty()) {
@@ -120,19 +130,17 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
                     actual2proxyMap[sockfd]=connfd;
 
                     actualfds.push(sockfd);
-                    patcher->insert(connfd);
+                    proxyPatcher->insert(connfd);
                 }
                 return;
             };
-            patcher->doDispatch(onRead,onWrite,onDispatch,nullptr);
+            proxyPatcher->doDispatch(onRead,onWrite,onDispatch,nullptr);
         }
     });
 
     std::thread netThread([&](){
-        std::shared_ptr<dispatcher> patcher;
-
         auto proxyConfig=config::instance().json["proxyDispatcher"];
-        patcher=dispatcher::get(proxyConfig);
+        netPatcher=dispatcher::get(proxyConfig);
         char buf[MAXLINE];
         
         auto onWrite=[&](int sockfd) {
@@ -143,26 +151,36 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
             auto& buffer=netWriteBuffer[sockfd].first.front();
             int &offset=netWriteBuffer[sockfd].second;
             auto *data=buffer.data()+offset;
-            int nsize=patcher->write(sockfd,data,buffer.length()-offset);
+            int nsize=netPatcher->write(sockfd,data,buffer.length()-offset);
             offset+=nsize;
             if (offset==buffer.length()) {
                 netWriteBuffer[sockfd].first.pop_front();
                 offset=0;
+                if (netRemovedFd.find(sockfd)!=netRemovedFd.end()&& netWriteBuffer[sockfd].first.empty()) {
+                    netPatcher->remove(sockfd);
+                    netRemovedFd.erase(sockfd);
+                }
             }
             return 0;
         };
         auto onRead=[&](int index,int sockfd) {
             std::lock_guard<std::mutex> lck(rwLock);
-            auto n=patcher->read(sockfd,buf,MAXLINE);
+            auto n=netPatcher->read(sockfd,buf,MAXLINE);
             if (n==0) {
                 return 0;
             }
+            int proxyfd=actual2proxyMap[sockfd];
             if (n<0)
             {
-                patcher->remove(index);
+                
+                netPatcher->remove(sockfd);
+                if (proxyWriteBuffer[proxyfd].first.empty()) {
+                    proxyPatcher->remove(proxyfd);
+                } else {
+                    proxyRemovedFd.insert(proxyfd);
+                }
                 return 0;
             }   
-            int proxyfd=actual2proxyMap[sockfd];
             proxyWriteBuffer[proxyfd].first.push_back(std::string(buf,n));
             
             return 0;
@@ -172,11 +190,11 @@ void tcpServer::doProxy(safeQueue<std::promise<int>> &connections,serviceType ty
             {
                 int connfd,i;
                 actualfds.pop(connfd);
-                patcher->insert(connfd);
+                netPatcher->insert(connfd);
             }
             return;
         };
-        patcher->doDispatch(onRead,onWrite,onDispatch,nullptr);
+        netPatcher->doDispatch(onRead,onWrite,onDispatch,nullptr);
     });
     proxyThread.join();
     netThread.join();

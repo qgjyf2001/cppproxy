@@ -22,6 +22,7 @@ private:
     pollfd* clientfd;
     int totfd=0;
     int listenfd=-1;
+    std::map<int,int> sockMap;
 public:
     void init(int maxClient,bool isListen=false,std::string ip="",int port=0) {
         dispatcher::init(maxClient);
