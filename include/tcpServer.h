@@ -15,7 +15,6 @@ private:
     int proxyPort;
     std::string proxyIP;
     int maxClient;
-    std::mutex mutex,rwLock;
     std::map<int,int> proxy2actualMap;//真实fd到代理fd的映射
     safeQueue<int> actualfds;
 public:

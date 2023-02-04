@@ -39,11 +39,11 @@ void pollDispatcher::doDispatch(std::function<int(int,int)> onRead,std::function
                         onConnect(connfd);
                     }
                 }
-                else if (i!=0) {
+                else if (i!=0&&clientfd[i].fd!=-1) {
                     onRead(i,clientfd[i].fd);
                 }
             }
-            if (clientfd[i].revents&POLLOUT)
+            if ((clientfd[i].revents&POLLOUT)&&clientfd[i].fd!=-1)
             {
                 onWrite(clientfd[i].fd);
             }
