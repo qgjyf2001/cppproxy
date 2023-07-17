@@ -90,6 +90,11 @@ void connectionManager::doManage(std::string token,safeQueue<std::promise<int>>&
                     break;
                 }
                 int fd=accept(listenfd,(sockaddr*)&clientaddr,&clientAddrLen);
+                n=patcher->read(fd,buffer,MAXLINE);
+                if (std::string(buffer,n) != res) {
+                    promise.set_value(-1);
+                    break;
+                }
                 promise.set_value(fd);
             }
         }

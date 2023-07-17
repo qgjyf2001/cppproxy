@@ -9,9 +9,9 @@ JsonParser::JsonParser(std::string* message,Type type,bool checkEnd,std::string:
         }
         auto begin=!checkEnd?*beginPtr:message->begin();
         auto end=message->end()-1;
-        moveForwardPtr<' ','\n'>(begin,message->end());
+        moveForwardPtr<' ','\n','\r'>(begin,message->end());
         if (checkEnd)
-            moveBackwardPtr<' ','\n'>(end,message->begin());
+            moveBackwardPtr<' ','\n','\r'>(end,message->begin());
         if ((*begin=='{'&&(!checkEnd||*end=='}'))||(*begin=='['&&(!checkEnd||*end==']')))
         {
             this->type=*begin=='['?ARRAY:OBJECT;
@@ -21,7 +21,7 @@ JsonParser::JsonParser(std::string* message,Type type,bool checkEnd,std::string:
             {
                 if (this->type!=ARRAY)
                 {
-                moveForwardPtr<' ','\n'>(begin,end);
+                moveForwardPtr<' ','\n','\r'>(begin,end);
                 if (begin==end)
                     break;
                 if (*begin!='"')
@@ -31,11 +31,11 @@ JsonParser::JsonParser(std::string* message,Type type,bool checkEnd,std::string:
                 if (*begin!='"')
                     JSONPanic("illegal syntax");
                 tail=begin++;
-                moveForwardPtr<' ','\n'>(begin,end);
+                moveForwardPtr<' ','\n','\r'>(begin,end);
                 if (begin==end||*begin!=':')
                     JSONPanic("illegal syntax");
                 begin++;
-                moveForwardPtr<' ','\n'>(begin,end);
+                moveForwardPtr<' ','\n','\r'>(begin,end);
                 }
                 moveForwardPtr<'{','"','0','1','2','3','4','5','6','7','8','9','['>(begin,end,false);
                 if (begin==end)
@@ -98,7 +98,7 @@ JsonParser::JsonParser(std::string* message,Type type,bool checkEnd,std::string:
                     else
                         json[std::string(head,tail)]=JsonParser(&str,INT);
                 }
-                moveForwardPtr<' ','\n'>(begin,end);
+                moveForwardPtr<' ','\n','\r'>(begin,end);
                 if (*begin==',')
                     begin++;
                 else if ((!((*begin=='}'&&this->type==OBJECT)||(*begin==']'&&this->type==ARRAY)))&&checkEnd)

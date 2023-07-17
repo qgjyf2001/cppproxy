@@ -65,7 +65,7 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
     patcher->fullWrite(sockfd,"ready\n",6);
     while (true)
     {
-        std::string data="done\n";
+        std::string data=std::to_string(rand())+"\n";
         bool status;
         int n=patcher->read(sockfd,buf,MAXLINE);
         if (n<0) {
@@ -94,6 +94,7 @@ void clientConnectionManager::doManage(std::string token,safeQueue<std::promise<
             std::cerr<<"connect error at:"<<__FILE__<<",line"<<__LINE__<<std::endl;;
             continue;
         }
+        patcher->fullWrite(fd,data.c_str(),data.length());
         std::promise<int> promise;
         promise.set_value(fd);
         sockfds.push(std::move(promise));
